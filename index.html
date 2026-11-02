@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>三百首 · 词宗 / 词路 — 古风歌曲桌游</title>
+<meta name="description" content="以飞书「三百首」377 首古风歌曲为牌库的双玩法桌游：一局辑录选牌，一局掷骰行棋；声名、通史、立派、成题四条终点线，支持人机与多人同屏。">
+<meta name="theme-color" content="#f2e9da">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='6' fill='%239e3d32'/%3E%3Ctext x='32' y='45' font-size='34' text-anchor='middle' fill='%23fbf3e6' font-family='STKaiti,KaiTi,serif'%3E%E8%A9%9E%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- 远山 -->
+<div class="mountains" aria-hidden="true">
+  <svg viewBox="0 0 1440 320" preserveAspectRatio="none">
+    <path d="M0,250 L90,212 L150,238 L240,168 L320,214 L410,150 L500,206 L580,176 L680,224 L770,158 L860,208 L950,182 L1040,226 L1130,170 L1220,214 L1310,190 L1440,240 L1440,320 L0,320 Z" fill="#8a7f6d" opacity=".16"/>
+    <path d="M0,286 L120,254 L210,276 L300,232 L390,266 L480,238 L580,272 L680,244 L790,278 L880,248 L980,274 L1080,240 L1180,268 L1290,246 L1440,280 L1440,320 L0,320 Z" fill="#5a5249" opacity=".10"/>
+  </svg>
+</div>
+
+<!-- ============ 开场 ============ -->
+<section id="view-intro" class="view is-active">
+  <div class="intro-wrap">
+    <div class="brand-rule"></div>
+    <h1 class="brand">三 百 首<span class="brand-sub">詞 宗 · 詞 路</span></h1>
+    <div class="brand-line"><i></i><b>二〇〇八 — 二〇二六</b><i></i></div>
+
+    <div class="story">
+      <p>三百七十七首古风歌，被反复听过、争论过、注解过。</p>
+      <p>你是这套歌单的<em>选家</em>。同一副牌，两种打法：<em>詞宗</em>在歌肆里逐张拣选，<em>詞路</em>沿棋盘掷骰行棋——都要在六个年代里编出自家的谱系，并和同桌抢同一张歌单：以<em>声名</em>、以<em>通史</em>、以<em>立派</em>，或以<em>成题</em>。</p>
+      <p class="verse">四条路，先走通一条的人赢。</p>
+    </div>
+
+    <div class="intro-stats" id="intro-stats"></div>
+
+    <!-- 玩法：两枚圆钮，与下方设置并列但单独成组 -->
+    <div class="mode-pick" id="mode-pick">
+      <button class="orb on" data-mode="deck" aria-pressed="true">
+        <span class="orb-ring"></span>
+        <b>詞宗</b>
+        <i>辑录 · 选牌</i>
+      </button>
+      <button class="orb" data-mode="board" aria-pressed="false">
+        <span class="orb-ring"></span>
+        <b>詞路</b>
+        <i>行棋 · 棋盘</i>
+      </button>
+    </div>
+
+    <div class="setup">
+      <div class="setup-row">
+        <span class="lb">人数</span>
+        <div class="seg" id="seg-count">
+          <button data-n="2" class="on">二人</button>
+          <button data-n="3">三人</button>
+          <button data-n="4">四人</button>
+        </div>
+      </div>
+      <div class="setup-row">
+        <span class="lb">先后</span>
+        <div class="seg" id="seg-first">
+          <button data-first="1" class="on">我先手</button>
+          <button data-first="0">我后手（+补偿）</button>
+        </div>
+      </div>
+      <div class="setup-row">
+        <span class="lb">难度</span>
+        <div class="seg" id="seg-difficulty">
+          <button data-diff="easy" class="on">初涉</button>
+          <button data-diff="normal">熟手</button>
+          <button data-diff="hard">老吏</button>
+        </div>
+      </div>
+      <div class="seats" id="seats"></div>
+      <p class="setup-hint">点座位右侧的「人 / 机」切换。留两个以上「人」即同屏轮流（热座）。</p>
+    </div>
+
+    <button class="seal-btn" id="btn-start" aria-label="开卷">
+      <span class="box"></span>
+      <span class="txt">开<br>卷</span>
+    </button>
+
+    <div class="intro-links">
+      <button class="link" id="btn-rules-intro">规则</button>
+      <span>·</span>
+      <button class="link" id="btn-data-intro">数据与更新</button>
+      <span>·</span>
+      <button class="link" id="btn-cards-intro">牌库一览</button>
+    </div>
+    <p class="src">牌库来源：飞书多维表格「三百首」+「解析」<span id="src-meta"></span></p>
+  </div>
+</section>
+
+<!-- ============ 对局 ============ -->
+<section id="view-game" class="view">
+  <header class="topbar">
+    <div class="brand-sm">三百首<span class="dot">·</span>词宗</div>
+    <div class="turninfo"><span id="round-label">第一轮</span><i></i><span id="turn-label">轮到你</span></div>
+    <div class="scorebar" id="scorebar"></div>
+    <div class="topacts">
+      <button class="nav sm" id="btn-rules">规则</button>
+      <button class="nav sm" id="btn-data">数据</button>
+      <button class="nav sm" id="btn-restart">重开</button>
+    </div>
+  </header>
+
+  <div class="board">
+    <div class="foes" id="foes"></div>
+
+    <section class="market-wrap">
+      <div class="sec-t"><span>歌 肆</span><i></i><em>公共牌列，两家共抢</em></div>
+      <div class="market" id="market"></div>
+      <div class="market-hint">
+        <span id="hint-text">悬停查看费用与声名；右键看全部档案</span>
+        <span id="hint-side"></span>
+      </div>
+    </section>
+
+    <div class="duo">
+      <section class="timeline-wrap">
+        <div class="sec-t"><span>编 年 轴</span><i></i><em id="era-note">六段 · 四段双收 · 跨三题</em></div>
+        <div class="timeline" id="timeline"></div>
+      </section>
+      <aside class="side-wrap" id="side-me"></aside>
+    </div>
+
+    <section class="zone me" id="zone-me"></section>
+
+    <section class="actionbar">
+      <button class="act-btn" id="btn-gather">
+        <span class="t">采 风</span>
+        <span class="d">得墨 4 · 换去歌肆 1 张</span>
+      </button>
+      <div class="logbox" id="log"></div>
+    </section>
+  </div>
+</section>
+
+
+<!-- ============ 游戏二：棋路 ============ -->
+<section id="view-board" class="view">
+  <header class="topbar">
+    <div class="brand-sm">词路<span class="dot">·</span>行棋</div>
+    <div class="turninfo"><span id="bp-round">第 1 轮</span><i></i><span>掷骰前进，落地辑录</span></div>
+    <div class="scorebar" id="bp-players"></div>
+    <div class="topacts">
+      <button class="nav sm" id="bp-rules">规则</button>
+      <button class="nav sm" id="bp-back">返回</button>
+    </div>
+  </header>
+  <div class="board-wrap">
+    <div class="bp-main">
+    <div class="bp-grid" id="bp-grid"></div>
+    <div class="bp-legend">
+      <span><i class="lg-own"></i>朱框 = 已被占</span>
+      <span><i class="lg-toll">3墨</i>= 踩到要付的过路费</span>
+      <span><i class="lg-q">？</i>= 未翻开的扣牌</span>
+      <span><b>成组</b>：同一年代 / 同一主题 / 同一位词曲作者，占满 3 格即成一组</span>
+      <span class="bp-cols" id="bp-cols">每行
+        <button data-c="4">4</button>
+        <button data-c="5">5</button>
+        <button data-c="6">6</button>
+        <button data-c="7" class="on">7</button>
+      </span>
+    </div>
+    <div class="bp-bottom">
+      <div class="bp-acts">
+        <button class="act-btn" id="bp-roll">
+          <span class="t">掷 骰</span>
+          <span class="d">走完 2 卷 / 声名先到</span>
+        </button>
+        <button class="act-btn ghost" id="bp-gather">
+          <span class="t">采 风</span>
+          <span class="d">+4 墨 · 停一手</span>
+        </button>
+      </div>
+      <div class="bp-dice" id="bp-dice">·</div>
+      <div class="bp-info" id="bp-info"></div>
+    </div>
+    </div>
+    <aside class="side-wrap bp-side" id="bp-side"></aside>
+    <div class="logbox bp-log" id="bp-log"></div>
+  </div>
+</section>
+
+<div class="modal" id="modal-bp-result">
+  <div class="modal-box">
+    <button class="modal-x" data-close>×</button>
+    <div class="rhead" style="text-align:left">
+      <div class="k">路 尽</div>
+      <h2 id="bp-result-title" style="margin-left:0">路成</h2>
+      <div class="tagline" id="bp-result-sub" style="margin-left:0"></div>
+    </div>
+    <div class="acts" style="margin-top:24px">
+      <button class="nav primary" id="bp-again">再来一局</button>
+      <button class="nav" id="bp-home">回到首页</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 结算 ============ -->
+<section id="view-end" class="view">
+  <div class="end-wrap">
+    <div class="rhead">
+      <div class="k">对 局 终</div>
+      <h2 id="end-title">谱成</h2>
+      <div class="tagline" id="end-sub"></div>
+    </div>
+
+    <div class="sec-t"><span>词 宗 谱</span><i></i></div>
+    <div class="end-hand" id="end-hand"></div>
+    <div class="acts">
+      <button class="nav primary" id="btn-export">导出歌单</button>
+      <button class="nav" id="btn-again">再来一局</button>
+    </div>
+
+    <div class="sec-t"><span>四 条 线</span><i></i></div>
+    <div class="end-goals" id="end-goals"></div>
+
+    <div class="sec-t"><span>对 局 记 录</span><i></i></div>
+    <div class="end-log" id="end-log"></div>
+  </div>
+</section>
+
+<!-- ============ 模态：规则 ============ -->
+<div class="modal" id="modal-rules">
+  <div class="modal-box wide">
+    <button class="modal-x" data-close>×</button>
+    <h2>规 则</h2>
+    <div class="rule-body" id="rule-body"></div>
+  </div>
+</div>
+
+<!-- ============ 模态：数据 ============ -->
+<div class="modal" id="modal-data">
+  <div class="modal-box wide">
+    <button class="modal-x" data-close>×</button>
+    <h2>数据与更新</h2>
+    <div class="data-body" id="data-body"></div>
+  </div>
+</div>
+
+<!-- ============ 模态：卡牌详情 ============ -->
+<div class="modal" id="modal-card">
+  <div class="modal-box card-box">
+    <button class="modal-x" data-close>×</button>
+    <div id="card-detail"></div>
+  </div>
+</div>
+
+<!-- ============ 模态：牌库一览 ============ -->
+<div class="modal" id="modal-cards">
+  <div class="modal-box wide">
+    <button class="modal-x" data-close>×</button>
+    <h2>牌 库</h2>
+    <div class="lib-tools">
+      <input id="lib-search" placeholder="搜歌名、词人、曲作、题材…">
+      <select id="lib-filter"><option value="">全部类型</option></select>
+      <span class="lib-count" id="lib-count"></span>
+    </div>
+    <div class="lib-grid" id="lib-grid"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data/cards.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/board.js"></script>
+</body>
+</html>

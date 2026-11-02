@@ -1,0 +1,8 @@
+# 统一换行处理，避免 Windows 批处理在别的机器上被改成 LF 而失效
+* text=auto
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary

@@ -1,0 +1,8 @@
+{
+  "baseToken": "填入你的飞书多维表格 base token（链接里 /base/ 后面那串）",
+  "tables": {
+    "songs": "填入「三百首」表的 tableId（链接 ?table= 后面那串）",
+    "parses": "填入「解析」表的 tableId"
+  },
+  "_note": "复制本文件为 feishu.json 再填值。feishu.json 已在 .gitignore 里，不会进仓库。"
+}
