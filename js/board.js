@@ -29,6 +29,7 @@
     hardWinNow: true,   // 老吏：这一张能到 120 必买
     hardBlock: true,    // 老吏：抢掉能让对手成组的格子
     hardBehind: true,   // 老吏落后时更进取
+    hardDullByN: { 2: [0.10, 0], 3: [0.18, 0, 0], 4: [0.10, 0.06, 0, 0] },  // 老吏：手位「让一手」概率（削先手）
     tollLapCap: 2,      // 同一格被主人重修的上限（每重修一次 +1 墨）
     maxTurns: 400       // 只作死循环兜底，正常对局远到不了
   };
@@ -550,6 +551,17 @@
     if (diff === 'hard' && BOARD.hardWinNow && p.fame + ev.fame >= BOARD.fameTarget) {
       log(p.name + ' 看准了：这一张落谱即可立家。', 'good');
       buy(); return;
+    }
+
+    // 老吏首位偶尔让一手：该买却去采风，专门削先手（压平座位差）
+    var dullArr = BOARD.hardDullByN ? BOARD.hardDullByN[S.players.length] : null;
+    var dullP = dullArr ? (dullArr[p.seat || 0] || 0) : 0;
+    if (diff === 'hard' && dullP && Math.random() < dullP) {
+      p.ink += BOARD.gatherInk;
+      log(p.name + ' 采风，得墨 ' + BOARD.gatherInk + '，本轮不行棋。');
+      render();
+      nextTurn();
+      return;
     }
 
     // 老吏卡人：这张若被领先的对手拿到就成组，先抢下来

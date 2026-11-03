@@ -23,10 +23,20 @@
     hardBlock: true,                                 // 老吏：对手下一张就能赢时，抢掉那张
     hardSeatCatch: true,                             // 老吏后手：更积极（降门槛、加阻断）
     easySeatSlop: [1, 1, 1, 1],                      // 初涉座位松紧（默认关闭：实测噪声不改变强弱）
+    easyDullByN: {                                    // 初涉：该座位「该买却去采风」的概率（胜率高的座位调傻）
+      2: [0.025, 0],
+      3: [0.025, 0, 0.01],
+      4: [0.02, 0, 0.008, 0.032]
+    },
+    hardNoiseByN: {                                  // 老吏：手位噪声（削先手，压平座位差）
+      2: [0, 0],
+      3: [0.6, 0, 0],
+      4: [1.2, 0.5, 0, 0]
+    },
     hardSeatFameByN: {                               // 老吏：追声名系数（按人数、按出手位次）
       2: [0.2, 0.4],
-      3: [0.2, 0.4, 0.6],
-      4: [0.2, 0.4, 0.6, 0.8]
+      3: [0, 0.2, 0.6],
+      4: [0, 0.1, 0.35, 0.8]
     }
   };
 
@@ -178,13 +188,19 @@
     if (difficulty === 'easy' && TUNE.easySeatSlop) {
       noise *= (TUNE.easySeatSlop[p.seat || 0] || 1);
     }
+    if (difficulty === 'hard' && TUNE.hardNoiseByN) {
+      var hnArr = TUNE.hardNoiseByN[game.state.players.length] || [];
+      var hn = hnArr[p.seat || 0] || 0;
+      if (hn) s += (game.rnd() - 0.5) * hn;   // 首位的额外噪声：偶尔选次优，专门削先手
+    }
     s += (game.rnd() - 0.5) * noise;
 
-    // 老吏后手：更看重声名、少计较墨费（追赶节奏）
+    // 老吏后手：更看重声名（追赶节奏）
     if (difficulty === 'hard' && TUNE.hardSeatFameByN) {
       var arr = TUNE.hardSeatFameByN[game.state.players.length] || [];
       var sf = arr[p.seat || 0] || 0;
-      if (sf) { s += pv.fame * sf; s += pv.cost * 0.15 * sf; }
+      // 只提高「声名」权重；墨费仍按原折扣计（否则系数一大就变成专挑贵牌）
+      if (sf) s += pv.fame * sf;
     }
 
     return s;
@@ -231,6 +247,16 @@
     }
     // forcePlan：配平工具用，强制只走某一条线（用于测「达成轮次期望」）
     if (forcePlan) planInfo = Object.assign({}, planInfo, { plan: forcePlan });
+
+    // 初涉「犯傻位」：该买却去采风，白让一手（胜率高的座位调傻一点）
+    if (difficulty === 'easy' && TUNE.easyDullByN) {
+      var nPl = game.state.players.length;
+      var dArr = TUNE.easyDullByN[nPl] || [];
+      var dull = dArr[p.seat || 0] || 0;
+      if (dull > 0 && game.rnd() < dull) {
+        return { type: 'gather', plan: planInfo.plan, dull: true };
+      }
+    }
 
     // 只把「买得起且谱未满」的牌放进候选，再按分数排名
     var cands = [];

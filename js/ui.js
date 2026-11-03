@@ -1648,19 +1648,16 @@
       '<span>终局 <b>声名 ' + w.fame + '</b></span>';
 
     // 四行战绩：声名 / 占地 / 成组 / 行棋
+    // 终局时这些数字早已定型，进度条没有意义——左边名称、右边数据
     var rows = [
-      { n: '声名', v: me.fame, t: B.BOARD.fameTarget, p: me.fame / B.BOARD.fameTarget, done: me.fame >= B.BOARD.fameTarget },
-      { n: '占地', v: cells, t: 18, p: cells / 18, done: false },
-      { n: '成组', v: groups, t: 5, p: groups / 5, done: false },
-      { n: '行棋', v: me.lap, t: 3, p: me.lap / 3, done: false }
+      { n: '声名', v: '<b>' + me.fame + '</b> / ' + B.BOARD.fameTarget },
+      { n: '占地', v: '<b>' + cells + '</b> 格' },
+      { n: '成组', v: '<b>' + groups + '</b> 组' },
+      { n: '行棋', v: '<b>' + me.lap + '</b> 卷 · ' + me.hand.length + ' 首' }
     ];
-    $('#bpe-rows').innerHTML = rows.map(function (r) {
-      return '<div class="eg' + (r.done ? ' done' : '') + '">' +
-        '<div class="eg-top"><b>' + r.n + '</b><span>目标 ' + r.t + '</span></div>' +
-        '<div class="eg-line"><i class="sw me"></i><span class="nm">你</span>' +
-        '<span class="bar"><i class="me" style="width:' + Math.max(0, Math.min(100, 100 * r.p)) + '%"></i></span>' +
-        '<span class="val' + (r.done ? ' ok' : '') + '">' + r.v + '</span></div></div>';
-    }).join('');
+    $('#bpe-rows').innerHTML = '<div class="end-stats">' + rows.map(function (r) {
+      return '<div class="es"><b>' + r.n + '</b><span>' + r.v + '</span></div>';
+    }).join('') + '</div>';
 
     var hw = $('#bpe-hand'); hw.innerHTML = '';
     me.hand.forEach(function (c) {
@@ -1750,6 +1747,7 @@
         { k: '行棋', v: me.lap + ' 卷 · ' + me.hand.length + ' 首', p: Math.min(1, me.lap / 3) }
       ],
       section: '战 绩',
+      plainRows: true,
       songs: me.hand.map(function (c) { return c.name; }).slice(0, 8),
       note: '共 ' + S.players.length + ' 家 · 声名先到 ' + B.BOARD.fameTarget
     };
@@ -1864,18 +1862,31 @@
     y += 22; hr(y); y += 38;
     section(spec.section || '四 条 线', y);
     y += 32;
-    spec.rows.forEach(function (r) {
-      c.fillStyle = '#5a5249'; c.font = '17px ' + SERIF;
-      c.fillText(r.k, M, y + 3);
-      c.textAlign = 'right'; c.font = '15px ' + SANS; c.fillStyle = '#6f665a';
-      c.fillText(r.v, W - M, y + 2);
-      c.textAlign = 'left';
-      c.fillStyle = 'rgba(90,82,73,.13)';
-      rrect(c, M, y + 11, W - M * 2, 5, 2.5); c.fill();
-      c.fillStyle = r.p >= 1 ? '#9e3d32' : 'rgba(158,61,50,.5)';
-      rrect(c, M, y + 11, Math.max(4, (W - M * 2) * Math.max(0, Math.min(1, r.p))), 5, 2.5); c.fill();
-      y += 40;
-    });
+    if (spec.plainRows) {
+      spec.rows.forEach(function (r) {
+        c.strokeStyle = 'rgba(90,82,73,.16)'; c.lineWidth = 1;
+        c.beginPath(); c.moveTo(M, y + 14); c.lineTo(W - M, y + 14); c.stroke();
+        c.fillStyle = '#5a5249'; c.font = '18px ' + SERIF;
+        c.fillText(r.k, M, y + 2);
+        c.textAlign = 'right'; c.font = '17px ' + SERIF; c.fillStyle = '#7a4038';
+        c.fillText(r.v, W - M, y + 2);
+        c.textAlign = 'left';
+        y += 36;
+      });
+    } else {
+      spec.rows.forEach(function (r) {
+        c.fillStyle = '#5a5249'; c.font = '17px ' + SERIF;
+        c.fillText(r.k, M, y + 3);
+        c.textAlign = 'right'; c.font = '15px ' + SANS; c.fillStyle = '#6f665a';
+        c.fillText(r.v, W - M, y + 2);
+        c.textAlign = 'left';
+        c.fillStyle = 'rgba(90,82,73,.13)';
+        rrect(c, M, y + 11, W - M * 2, 5, 2.5); c.fill();
+        c.fillStyle = r.p >= 1 ? '#9e3d32' : 'rgba(158,61,50,.5)';
+        rrect(c, M, y + 11, Math.max(4, (W - M * 2) * Math.max(0, Math.min(1, r.p))), 5, 2.5); c.fill();
+        y += 40;
+      });
+    }
 
     y += 12; hr(y); y += 38;
     section('谱 中', y);

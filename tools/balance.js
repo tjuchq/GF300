@@ -104,7 +104,8 @@ const B = {
   size: 49, perEra: 8, fameTarget: 120, startInk: 2, income: 1, passGain: 3,
   gatherInk: 4, groupSize: 3, groupBonus: 3, maxToll: 3, debtPenalty: 5,
   startBonus: 2, handLimit: 0, tollLapCap: 2, maxTurns: 400,
-  hardWinNow: true, hardBlock: true, hardBehind: true
+  hardWinNow: true, hardBlock: true, hardBehind: true,
+  hardDullByN: { 2: [0.10, 0], 3: [0.18, 0, 0], 4: [0.10, 0.06, 0, 0] }
 };
 const CHANCE = [
   { ink: 3 }, { ink: 4 }, { fame: 2 }, { fame: 3 }, { ink: 2, fame: 1 },
@@ -290,6 +291,15 @@ function runBoard(seed, n, comp, diffs) {
                 vals.forEach(x => { if (countDim(cells, foe.idx, x.dim, x.v) + 1 >= B.groupSize) buyIt = true; });
               });
             }
+          }
+
+          const dArr = B.hardDullByN ? B.hardDullByN[n] : null;
+          const dSeat = p.seat == null ? p.idx : p.seat;
+          const dP = dArr ? (dArr[dSeat] || 0) : 0;
+          if (diff === 'hard' && dP && rnd() < dP) {
+            p.ink += B.gatherInk;
+            turn = (turn + 1) % n;
+            continue;
           }
 
           if (diff === 'hard' && B.hardBehind) {

@@ -1094,3 +1094,16 @@ h1, h2, h3 { font-weight: 400; }
 }
 .share-prev img { width: 100%; display: block; }
 .share-tip { margin-top: 9px; font-size: 10.5px; color: var(--ink-4); text-align: center; }
+
+/* 结算页「战绩」：只列名称与数据，不画进度条 */
+.end-stats { border-top: 1px solid var(--line); margin-top: 2px; }
+.end-stats .es {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 14px; padding: 9px 2px; border-bottom: 1px solid var(--line);
+}
+.end-stats .es > b {
+  font-family: var(--kai); font-weight: 400; font-size: 13.5px;
+  letter-spacing: .16em; color: var(--ink);
+}
+.end-stats .es > span { font-size: 13px; color: var(--ink-3); letter-spacing: .02em; }
+.end-stats .es > span b { font-family: var(--kai); font-weight: 400; font-size: 17px; color: var(--seal); }
