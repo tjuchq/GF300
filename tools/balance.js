@@ -28,7 +28,7 @@ const ERAS = (data.meta && data.meta.eras) || [];
 const DIFF_CN = { easy: '初涉', normal: '熟手', hard: '老吏' };
 const BOARD_BALANCE = {
   2: { fame: 120, inkStep: 0, fameTable: [0, 0], income: 1 },
-  3: { fame: 120, inkStep: 0, fameTable: [3, 0, 10], income: 1 },
+  3: { fame: 120, inkStep: 0, fameTable: [3, 2, 8], income: 1 },
   4: { fame: 120, inkStep: 1, fameTable: [6, 0, 2, 6], income: 2 }
 };
 const LINE_CN = { fame: '声名', eras: '通史', schools: '立派', themes: '成题', timeout: '超时' };
@@ -102,7 +102,7 @@ function deckStats(n, cfg, diffs, games, seedBase) {
 /* ---------------- 词路（无界面复刻） ---------------- */
 const B = {
   size: 49, perEra: 8, fameTarget: 120, startInk: 2, income: 1, passGain: 3,
-  gatherInk: 4, groupSize: 3, groupBonus: 4, maxToll: 3, debtPenalty: 5,
+  gatherInk: 4, groupSize: 3, groupBonus: 3, maxToll: 3, debtPenalty: 5,
   startBonus: 2, handLimit: 0, tollLapCap: 2, maxTurns: 400
 };
 const CHANCE = [

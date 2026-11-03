@@ -18,9 +18,9 @@
     passGain: 3,        // 过起点（成卷）得声名
     gatherInk: 4,
     eventPenalty: 1,
-    visitFee: 1,        // 踩到别人已辑录的格子，付墨给对方换声名
+    visitFee: 1,        // 踩到别人已辑录的格子，付墨，转成对方声名
     groupSize: 3,       // 同一维度占满几格算「成组」
-    groupBonus: 4,      // 每成一组的声名奖励
+    groupBonus: 3,      // 每成一组的声名奖励
     maxToll: 3,         // 基础过路费上限（墨）
     debtPenalty: 5,     // 墨不足付过路费时，改扣声名
     startBonus: 2,      // 踩到起点（开卷格）的声名
@@ -34,7 +34,7 @@
      目标是同策略下各座位胜率尽量相等。 */
   var BALANCE = {
     2: { fame: 120, inkStep: 0, fameTable: [0, 0], income: 1 },
-    3: { fame: 120, inkStep: 0, fameTable: [3, 0, 10], income: 1 },
+    3: { fame: 120, inkStep: 0, fameTable: [3, 2, 8], income: 1 },
     4: { fame: 120, inkStep: 1, fameTable: [6, 0, 2, 6], income: 2 }
   };
 
@@ -332,10 +332,21 @@
       // 重修：只有「跨过一圈又回到这一格」才加价，且只加这一格
       if (p.lap > (c.claimedLap || 0) && (c.tollBonus || 0) < BOARD.tollLapCap) {
         c.tollBonus = (c.tollBonus || 0) + 1;
-        log(p.name + ' 重修《' + c.card.name + '》，这一格过路费 +1（现 ' +
-          tollOf(c, p.idx) + ' 墨）。', 'good');
+        var now = tollOf(c, p.idx);
+        log(p.name + ' 重修《' + c.card.name + '》，这一格过路费 +1（现 ' + now + ' 墨）。', 'good');
+        if (p.idx === S.myIdx) {
+          toast('重修《' + c.card.name + '》：这一格过路费升到 ' + now + ' 墨。', 2600);
+        }
+      } else if ((c.tollBonus || 0) >= BOARD.tollLapCap) {
+        log(p.name + ' 回到《' + c.card.name + '》；这一格已重修到顶（' + tollOf(c, p.idx) + ' 墨）。');
+        if (p.idx === S.myIdx) {
+          toast('《' + c.card.name + '》已重修到顶：' + tollOf(c, p.idx) + ' 墨。', 2200);
+        }
       } else {
         log('回到自己题过的《' + c.card.name + '》。');
+        if (p.idx === S.myIdx) {
+          toast('回到自己的《' + c.card.name + '》；走完一圈后再踩到，过路费才会涨。', 2400);
+        }
       }
       render(); later(nextTurn, 380); return;
     }
@@ -344,13 +355,22 @@
       var fee = tollOf(c, c.owner);
       if (p.ink >= fee) {
         p.ink -= fee;
-        log(p.name + ' 参看 ' + owner.name + ' 题过的《' + c.card.name + '》，付墨 ' + fee +
-          '，' + owner.name + ' 声名 +' + fee + '。', 'bad');
-        if (addFame(owner, fee)) return;
+        log(p.name + ' 参看 ' + owner.name + ' 题过的《' + c.card.name + '》，付润笔 ' + fee +
+          ' 墨，' + owner.name + ' 声名 +' + fee + '。', 'bad');
+        if (p.idx === S.myIdx) {
+          toast('踩到 ' + owner.name + ' 的《' + c.card.name + '》：付 ' + fee + ' 墨，他 +' + fee + ' 声名。', 2800);
+        } else if (owner.idx === S.myIdx) {
+          toast(esc(p.name) + ' 踩了你的《' + c.card.name + '》：你 +' + fee + ' 声名。', 2800);
+        }
       } else {
         p.fame = Math.max(0, p.fame - BOARD.debtPenalty);
         log(p.name + ' 想参看《' + c.card.name + '》却墨不足（需 ' + fee + '），空手而过，声名 −' +
           BOARD.debtPenalty + '。', 'bad');
+        if (p.idx === S.myIdx) {
+          toast('墨不够（需 ' + fee + '），空手而过：声名 −' + BOARD.debtPenalty + '。', 2800);
+        } else if (owner.idx === S.myIdx) {
+          toast(p.name + ' 付不起 ' + fee + ' 墨，空手而过：他 −' + BOARD.debtPenalty + ' 声名。', 2600);
+        }
         if (p.fame <= 0) bankrupt(p);
       }
       render(); later(nextTurn, 480); return;
@@ -592,7 +612,7 @@
         (who ? '<div class="c-owner" style="color:' + playerColor(who.idx) + '">' + esc(who.name) +
           (function () {
             var fee = tollOf(cell, who.idx);
-            return '<i class="c-toll" title="踩到这一格要付 ' + fee + ' 墨给 ' + esc(who.name) +
+            return '<i class="c-toll" title="踩到这一格要付 ' + fee + ' 墨，并让 ' + esc(who.name) + ' +' + fee + ' 声名' +
               ((cell.tollBonus || 0) ? '（主人重修过 ' + cell.tollBonus + ' 次）' : '') + '">' + fee + '墨</i>';
           })() + '</div>' : '') +
         '<div class="c-pieces">' + pieces + '</div>';
@@ -741,6 +761,13 @@
     var me = S.players[S.myIdx];
     var iWin = S.winner === S.myIdx;
     $('#bp-result-title').textContent = iWin ? '路 成' : '路 未 成';
+    var diffCn = { easy: '初涉', normal: '熟手', hard: '老吏' }[cfg.difficulty || 'normal'] || '熟手';
+    var mb = $('#bp-result-meta');
+    if (mb) {
+      mb.innerHTML = '<span>玩法 <b>词路</b></span><span><b>' + S.players.length + '</b> 人</span>' +
+        '<span>难度 <b>' + diffCn + '</b></span><span><b>' + S.turns + '</b> 手</span>' +
+        '<span>终局 <b>声名 ' + w.fame + '</b></span>';
+    }
     $('#bp-result-sub').innerHTML = iWin
       ? '你以声名 <b>' + w.fame + '</b> 先成一家，行 ' + (w.lap) + ' 卷。'
       : '<b>' + esc(w.name) + '</b> 以声名 <b>' + w.fame + '</b> 先成一家；你 ' + me.fame + ' 声名，行 ' + me.lap + ' 卷。';

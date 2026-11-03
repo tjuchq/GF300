@@ -8,6 +8,19 @@
 })(typeof self !== 'undefined' ? self : this, function (E) {
   'use strict';
 
+  /* 难度参数：配平工具可改；默认值即线上行为 */
+  var TUNE = {
+    noise: { easy: 9.0, normal: 0.7, hard: 0.12 },   // 评分噪声
+    floor: { easy: -1.2, normal: 0.12, hard: 0.3 },  // 低于此分不买
+    easyBest: 0.05,   // 初涉：前 5% 拿最优
+    easyMid: 0.15,    // 初涉：再 10% 拿二三优
+    easyJunk: 0.8,    // 初涉：没牌可买时硬拿废牌的概率
+    easyPlan: 0.3,    // 初涉：三成回合看错主线（随机选一条）
+    chain: { easy: 0.2, normal: 0.8, hard: 1.6 },    // 知音连锁的权重
+    deny: { normal: 1, hard: 1.4 },                  // 阻断意识（老吏更会卡人）
+    normalGather: 0.08,                              // 熟手偶尔「歇一手」去采风
+  };
+
   function avgFamePerCard(game, p) {
     if (!p.hand.length) return 3.2;
     var sum = 0;
@@ -67,8 +80,14 @@
     if (cfg.handLimit && p.hand.length >= cfg.handLimit) return -1e9;
 
     var s = 0;
-    s += pv.fame * 1.0;
-    s -= pv.cost * 0.55;
+    if (difficulty === 'easy') {
+      // 初涉的估值歪了：只看「便宜」，声名权重很低
+      s += pv.fame * 0.5;
+      s -= pv.cost * 1.1;
+    } else {
+      s += pv.fame * 1.0;
+      s -= pv.cost * 0.55;
+    }
 
     var plan = planInfo.plan;
     var pg = planInfo.progress;
@@ -103,8 +122,8 @@
       if (pg.fame.now + pv.fame >= cfg.fameTarget) s += 6;
     }
 
-    // 知音连锁：这张能带出下一次减费
-    if (pv.shared.length >= 2) s += 0.8;
+    // 知音连锁：这张能带出下一次减费（老吏更看重）
+    if (pv.shared.length >= 2) s += (TUNE.chain[difficulty] != null ? TUNE.chain[difficulty] : 0.8);
 
     // 阻断：对手很想要的，抢过来
     if (difficulty !== 'easy') {
@@ -118,13 +137,14 @@
           if (fp.plan === 'eras') eraWanted = true;
         }
       });
-      if (topShared >= 2) s += 1.6;
-      else if (topShared === 1) s += 0.7;
-      if (eraWanted) s += 0.9;
+      var deny = TUNE.deny[difficulty] || 1;
+      if (topShared >= 2) s += 1.6 * deny;
+      else if (topShared === 1) s += 0.7 * deny;
+      if (eraWanted) s += 0.9 * deny;
     }
 
     // 难度噪声
-    var noise = difficulty === 'easy' ? 3.5 : difficulty === 'hard' ? 0.25 : 0.9;
+    var noise = TUNE.noise[difficulty] != null ? TUNE.noise[difficulty] : 0.9;
     s += (game.rnd() - 0.5) * noise;
 
     return s;
@@ -140,8 +160,8 @@
     if (difficulty === 'hard' || cands.length === 1) return cands[0];
     var r = rnd();
     if (difficulty === 'easy') {
-      if (r < 0.3) return cands[0];
-      if (r < 0.55) {
+      if (r < TUNE.easyBest) return cands[0];
+      if (r < TUNE.easyMid) {
         var k = 1 + Math.floor(rnd() * Math.min(2, cands.length - 1));
         return cands[k] || cands[0];
       }
@@ -160,6 +180,15 @@
     var p = game.player(playerIdx);
     if (game.config.handLimit && p.hand.length >= game.config.handLimit) return { type: 'gather', reason: '谱满' };
     var planInfo = pickPlan(game, playerIdx);
+    // 初涉的小毛病：三成回合看错主线，按别的主线买牌
+    if (difficulty === 'easy' && TUNE.easyPlan && game.rnd() < TUNE.easyPlan) {
+      var allPlans = ['fame', 'eras', 'schools', 'themes'];
+      planInfo = Object.assign({}, planInfo, { plan: allPlans[Math.floor(game.rnd() * 4)] });
+    }
+    // 熟手的小毛病：偶尔该买也不买，去采风歇一手
+    if (difficulty === 'normal' && TUNE.normalGather && game.rnd() < TUNE.normalGather) {
+      return { type: 'gather', plan: planInfo.plan, reason: '歇一手' };
+    }
     // forcePlan：配平工具用，强制只走某一条线（用于测「达成轮次期望」）
     if (forcePlan) planInfo = Object.assign({}, planInfo, { plan: forcePlan });
 
@@ -175,11 +204,15 @@
     cands.sort(function (a, b) { return b.score - a.score; });
 
     // 低于门槛就不买（低档 AI 门槛更低，会拿一些废牌；高档只拿有价值的）
-    var floor = difficulty === 'easy' ? -0.3 : difficulty === 'hard' ? 0.3 : 0.12;
+    var floor = TUNE.floor[difficulty] != null ? TUNE.floor[difficulty] : 0.12;
     var pick = pickByRank(cands, difficulty, game.rnd);
     if (!pick || pick.score < floor) {
-      // 手上有钱却没牌可买：高档 AI 宁可采风换牌，低档 AI 会硬拿一张
-      if (difficulty === 'easy' && cands.length && game.rnd() < 0.5) pick = cands[0];
+      // 手上有钱却没牌可买：高档 AI 宁可采风换牌，初涉会乱拿一张（最优除外）
+      if (difficulty === 'easy' && cands.length && game.rnd() < TUNE.easyJunk) {
+        pick = cands.length > 1
+          ? cands[1 + Math.floor(game.rnd() * (cands.length - 1))]
+          : cands[0];
+      }
       else return { type: 'gather', plan: planInfo.plan };
     }
 
@@ -188,5 +221,5 @@
     return { type: 'place', cardId: pick.id, plan: planInfo.plan, rank: cands.indexOf(pick) };
   }
 
-  return { decide: decide, pickPlan: pickPlan, scoreCard: scoreCard, pickByRank: pickByRank };
+  return { decide: decide, pickPlan: pickPlan, scoreCard: scoreCard, pickByRank: pickByRank, TUNE: TUNE };
 });

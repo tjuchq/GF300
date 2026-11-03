@@ -204,9 +204,11 @@
       <div class="k">路 尽</div>
       <h2 id="bp-result-title" style="margin-left:0">路成</h2>
       <div class="tagline" id="bp-result-sub" style="margin-left:0"></div>
+      <div class="end-meta" id="bp-result-meta" style="margin-left:0"></div>
     </div>
     <div class="acts" style="margin-top:24px">
       <button class="nav primary" id="bp-again">再来一局</button>
+      <button class="nav" id="bp-share">保存分享图</button>
       <button class="nav" id="bp-home">回到首页</button>
     </div>
   </div>
@@ -219,12 +221,14 @@
       <div class="k">对 局 终</div>
       <h2 id="end-title">谱成</h2>
       <div class="tagline" id="end-sub"></div>
+      <div class="end-meta" id="end-meta"></div>
     </div>
 
     <div class="sec-t"><span>词 宗 谱</span><i></i></div>
     <div class="end-hand" id="end-hand"></div>
     <div class="acts">
       <button class="nav primary" id="btn-export">导出歌单</button>
+      <button class="nav" id="btn-share">保存分享图</button>
       <button class="nav" id="btn-again">再来一局</button>
     </div>
 
@@ -235,6 +239,20 @@
     <div class="end-log" id="end-log"></div>
   </div>
 </section>
+
+<!-- ============ 模态：分享图 ============ -->
+<div class="modal" id="modal-share">
+  <div class="modal-box share-box">
+    <button class="modal-x" data-close>×</button>
+    <h2>战 绩 卡</h2>
+    <div class="share-prev"><img id="share-img" alt="对局结果分享图"></div>
+    <div class="acts">
+      <a class="nav primary" id="share-dl" download="三百首_对局.png">保存图片</a>
+      <button class="nav" data-close>关闭</button>
+    </div>
+    <p class="share-tip">手机可长按图片保存；电脑点「保存图片」直接下载。</p>
+  </div>
+</div>
 
 <!-- ============ 模态：规则 ============ -->
 <div class="modal" id="modal-rules">

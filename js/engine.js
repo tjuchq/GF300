@@ -62,10 +62,11 @@
      inkStep / fameTable 是「后手补偿」：按出手位次发，先手 0。
      这两组数与 a–f 六个目标值一起用 AI 互搏调过（见 tools/balance.js）。 */
   var BALANCE = {
-    2: { fame: 44, eras: 6, schools: 5, themeSize: 7, themeEras: 4, groups: 2, minCards: 8, doubles: 4, income: 2, inkStep: 1, fameTable: [0, 0], schoolMinCards: 11, schoolDeep: true, aiBias: { themes: 1.18, schools: 1.08 } },
-    3: { fame: 44, eras: 6, schools: 5, themeSize: 7, themeEras: 5, groups: 3, minCards: 8, doubles: 4, income: 3, inkStep: 1, fameTable: [0, 1, 3], aiBias: { themes: 1.12, eras: 0.92, schools: 1.1 } },
-    4: { fame: 43, eras: 6, schools: 5, themeSize: 8, themeEras: 4, groups: 3, minCards: 8, doubles: 4, income: 4, inkStep: 1, fameTable: [0, 0, 3, 4], aiBias: { schools: 1.55, fame: 0.85 } }
+    2: { fame: 44, eras: 6, schools: 5, themeSize: 7, themeEras: 4, groups: 3, minCards: 8, doubles: 4, income: 3, inkStep: 1, fameTable: [0, 0], schoolMinCards: 10, schoolDeep: true, aiBias: { themes: 1.2, schools: 0.85, fame: 1.08 } },
+    3: { fame: 44, eras: 6, schools: 5, themeSize: 7, themeEras: 5, groups: 3, minCards: 8, doubles: 4, income: 3, inkStep: 1, fameTable: [1, 0, 3], schoolMinCards: 10, schoolDeep: true, aiBias: { themes: 1.12, eras: 0.92, schools: 1.1, fame: 1.06 } },
+    4: { fame: 44, eras: 6, schools: 5, themeSize: 8, themeEras: 4, groups: 2, minCards: 8, doubles: 4, income: 4, inkStep: 1, fameTable: [0, 0, 2, 5], schoolMinCards: 11, schoolDeep: true, aiBias: { themes: 0.8, fame: 1.0, eras: 0.9 } }
   };
+
 
   /* ---------------- 维度定义 ----------------
      只算「人」的维度：词人 / 曲师 / 编曲 / 演唱。

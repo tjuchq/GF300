@@ -628,6 +628,16 @@
     var iWin = winner === my;
     var byLabel = { fame: '声名', schools: '立派', eras: '通史', themes: '成题', timeout: '总进度' }[g.state.winBy] || '';
 
+    var diffCn = { easy: '初涉', normal: '熟手', hard: '老吏' }[App.lastDiff || App.difficulty] || '熟手';
+    var metaBox = $('#end-meta');
+    if (metaBox) {
+      metaBox.innerHTML =
+        '<span>玩法 <b>词宗</b></span>' +
+        '<span><b>' + g.state.players.length + '</b> 人</span>' +
+        '<span>难度 <b>' + diffCn + '</b></span>' +
+        '<span>第 <b>' + g.state.round + '</b> 轮</span>' +
+        '<span>终局 <b>' + byLabel + '</b></span>';
+    }
     $('#end-title').textContent = iWin ? '谱 成' : '谱 未 成';
     $('#end-sub').innerHTML = iWin
       ? '你以<b>' + byLabel + '</b>先成一家。第 ' + g.state.round + ' 轮，声名 ' + me.fame + '，谱中 ' + me.hand.length + ' 首。'
@@ -854,7 +864,7 @@
         '<tr><td><b>辑录</b></td><td>从歌肆挑一张歌，放进自己的谱</td><td>付墨；谱不限张数</td></tr>',
         '<tr><td><b>采风</b></td><td>直接得墨，并换掉歌肆最左一张</td><td>这一轮不收歌</td></tr>',
       '</table>',
-      '<p>每轮开始自动得墨：二人 2、三人 3、四人 4。<b>墨不设上限</b>，攒着等一张好牌是允许的。墨不够就只能采风。</p>',
+      '<p>每轮开始自动得墨：二人、三人 3 墨，四人 4 墨。<b>墨不设上限</b>，攒着等一张好牌是允许的。墨不够就只能采风。</p>',
 
       '<h3>② 四条终点线（达成任意一条即胜）</h3>',
       '<table>',
@@ -872,7 +882,8 @@
 
       '<p><b>立派按「每两首」算。</b>同一位创作者在你谱里有 2 首＝1 派，有 4 首＝2 派。只算词人、曲师两类角色，同一张牌可以同时算进两派。' +
         '<br>例：河图 2 首（1 派）、Finale 4 首（2 派）、银临 2 首（1 派）——合计 4 派。' +
-        '<br><b>二人局</b>还要求谱中至少 11 首；若某位创作者已有 3 首，可免这一条。</p>',
+        '<br><b>张数门槛</b>：二人、三人局谱里至少 <b>10</b> 首，四人局 <b>11</b> 首。' +
+        '若其中某一位词人或曲师已经出现 <b>3</b> 首（也就是这一派已有 3 张），可免这条张数要求。</p>',
       '<div class="note">' +
         '<b>跨角色也算。</b>甲是 A 的歌的词人，又是 B 的歌的曲师——A 与 B 合起来可以算甲的一派。<br>' +
         '<b>但同一首歌里词、曲都是甲，只算一张</b>，不能自己跟自己成组。' +
@@ -944,6 +955,7 @@
       '<p>你收下的格子会留朱框和名字，别人再踩到就要付墨给你：</p>',
       '<table>',
         '<tr><td>基本</td><td>按这首歌在你手上所属的<b>最大一组</b>收：组里 1 格 1 墨、2 格 2 墨、3 格 3 墨</td></tr>',
+        '<tr><td>归谁</td><td>踩的人<b>付墨</b>，这笔墨转成<b>你（格子主人）的声名</b>——被人参看就是被人引用</td></tr>',
         '<tr><td>重修</td><td>你<b>再走一圈又踩回自己已占的格子</b>，这一格的过路费永久 +1（最多 +2）。不是你走第几圈全局加价，而是哪一格被你重修过，哪一格才加</td></tr>',
         '<tr><td>付不起</td><td>空手而过，<b>声名 −' + B.debtPenalty + '</b>；若声名因此归零，<b>谱全失、占地释放、退回开卷格重来</b></td></tr>',
       '</table>',
@@ -979,6 +991,7 @@
   }
 
   function startGame() {
+    App.lastDiff = App.difficulty;
     if (tut.on && tut.phase === 'intro') {
       if (tut.flow === 'board') tutStartBoardGame(); else tutStartGame();
       return;
@@ -1131,6 +1144,10 @@
     });
     $('#btn-again').addEventListener('click', function () { showView('intro'); renderIntro(); });
     $('#btn-export').addEventListener('click', exportList);
+    var bs = $('#btn-share');
+    if (bs) bs.addEventListener('click', function () { showShare(deckShareSpec()); });
+    var bps = $('#bp-share');
+    if (bps) bps.addEventListener('click', function () { showShare(boardShareSpec()); });
     $('#btn-gather').addEventListener('click', doGather);
 
     ['btn-rules', 'btn-rules-intro'].forEach(function (id) {
@@ -1512,7 +1529,7 @@
       },
       {
         sel: '#bp-side', title: '右侧：成组看板',
-        text: '年代段 / 主题 / 班底，任一维度占满 <b>3 格</b>即成一組：立刻 +4 声名，过路费也按满额收。'
+        text: '年代段 / 主题 / 班底，任一维度占满 <b>3 格</b>即成一組：立刻 +' + (window.SBBoard.BOARD.groupBonus || 3) + ' 声名，过路费也按满额收。'
       },
       {
         sel: '#bp-gather', title: '缺墨就采风',
@@ -1577,6 +1594,254 @@
     launchBoard(roster, { tutorial: true, manual: true });
     setTimeout(function () { tutShow(3); }, 600);
   }
+
+  /* ---------------- 战绩卡（Canvas 生成 PNG） ---------------- */
+  var DIFF_LABEL = { easy: '初涉', normal: '熟手', hard: '老吏' };
+
+  function deckShareSpec() {
+    var g = App.game;
+    if (!g) return null;
+    var my = App.myIdx, me = g.state.players[my], winP = g.state.players[g.state.winner];
+    var cfg = g.config, pg = E.progress(me, cfg);
+    var iWin = g.state.winner === my;
+    var byLabel = { fame: '声名', schools: '立派', eras: '通史', themes: '成题', timeout: '总进度' }[g.state.winBy] || '声名';
+
+    var th = (pg.themes.detail || [])[0] || { count: 0, eras: 0 };
+    var dbl = cfg.eraDoubleSegs || 0, grp = cfg.eraMinGroups || 0;
+    var eraP = Math.min(pg.eras.now / cfg.eraTarget, dbl ? (pg.eras.doubles || 0) / dbl : 1, grp ? (pg.eras.groups || 0) / grp : 1);
+
+    return {
+      mode: '词宗',
+      win: iWin,
+      verdict: iWin ? '谱 成' : '谱 未 成',
+      line: iWin ? '以「' + byLabel + '」先成一家' : '「' + winP.name + '」以「' + byLabel + '」先成一家',
+      meta: [g.state.players.length + ' 人', DIFF_LABEL[App.lastDiff || App.difficulty] || '熟手', '第 ' + g.state.round + ' 轮'],
+      players: g.state.players.map(function (p) {
+        return { name: p.name, fame: p.fame, hand: p.hand.length, me: p.idx === my, win: p.idx === g.state.winner };
+      }),
+      rows: [
+        { k: '声名', v: pg.fame.now + ' / ' + cfg.fameTarget, p: Math.min(1, pg.fame.now / cfg.fameTarget) },
+        { k: '通史', v: pg.eras.now + '/6 段 · 双 ' + (pg.eras.doubles || 0) + '/' + dbl + ' · 跨 ' + (pg.eras.groups || 0) + '/' + grp, p: eraP },
+        { k: '立派', v: pg.schools.now + ' / ' + cfg.schoolTarget + ' 派', p: Math.min(1, pg.schools.now / cfg.schoolTarget) },
+        { k: '成题', v: th.count + ' 首（跨 ' + (th.eras || 0) + ' 代）/ ' + cfg.themeSize + ' 首 · ' + (cfg.themeEras || 0) + ' 代',
+          p: Math.min(1, Math.min(th.count / cfg.themeSize, (th.eras || 0) / (cfg.themeEras || 1))) }
+      ],
+      section: '四 条 线',
+      songs: me.hand.map(function (c) { return c.name; }).slice(0, 8),
+      note: '声名 ' + me.fame + ' · 谱中 ' + me.hand.length + ' 首'
+    };
+  }
+
+  function boardShareSpec() {
+    var B = window.SBBoard;
+    if (!B || !B.S || !B.S.players.length) return null;
+    var S = B.S, me = S.players[S.myIdx], w = S.players[S.winner];
+    var iWin = S.winner === S.myIdx;
+    var cells = S.cells.filter(function (c) { return c.owner === S.myIdx; }).length;
+    var groups = Object.keys(me.rewarded || {}).length;
+    return {
+      mode: '词路',
+      win: iWin,
+      verdict: iWin ? '路 成' : '路 未 成',
+      line: iWin ? '以声名 ' + me.fame + ' 先成一家' : '「' + w.name + '」以声名 ' + w.fame + ' 先成一家',
+      meta: [S.players.length + ' 人', DIFF_LABEL[B.cfg.difficulty] || '熟手', S.turns + ' 手'],
+      players: S.players.slice().sort(function (a, b) { return b.fame - a.fame; }).map(function (p) {
+        return { name: p.name, fame: p.fame, hand: p.hand.length, me: p.idx === S.myIdx, win: p.idx === S.winner };
+      }),
+      rows: [
+        { k: '声名', v: me.fame + ' / ' + B.BOARD.fameTarget, p: Math.min(1, me.fame / B.BOARD.fameTarget) },
+        { k: '占地', v: cells + ' 格', p: Math.min(1, cells / 18) },
+        { k: '成组', v: groups + ' 组', p: Math.min(1, groups / 5) },
+        { k: '行棋', v: me.lap + ' 卷 · ' + me.hand.length + ' 首', p: Math.min(1, me.lap / 3) }
+      ],
+      section: '战 绩',
+      songs: me.hand.map(function (c) { return c.name; }).slice(0, 8),
+      note: '共 ' + S.players.length + ' 家 · 声名先到 ' + B.BOARD.fameTarget
+    };
+  }
+
+  function rrect(ctx, l, t, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(l + r, t);
+    ctx.arcTo(l + w, t, l + w, t + h, r);
+    ctx.arcTo(l + w, t + h, l, t + h, r);
+    ctx.arcTo(l, t + h, l, t, r);
+    ctx.arcTo(l, t, l + w, t, r);
+    ctx.closePath();
+  }
+
+  function spaced(ctx, text, x, y, gap) {
+    var cx = x;
+    for (var i = 0; i < text.length; i++) {
+      ctx.fillText(text[i], cx, y);
+      cx += ctx.measureText(text[i]).width + gap;
+    }
+    return cx;
+  }
+
+  /** 真正的绘制：H 由外部决定，返回内容底部 y（用于自适应高度） */
+  function paintShare(c, spec, H) {
+    var W = 900, M = 84;
+    var SERIF = '"Songti SC","STSong","SimSun","Noto Serif CJK SC",serif';
+    var SANS = '"PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif';
+
+    c.fillStyle = '#f7f2e7'; c.fillRect(0, 0, W, H);
+    c.fillStyle = 'rgba(158,61,50,.03)';
+    for (var i = 0; i < H; i += 6) c.fillRect(0, i, W, 1);
+
+    c.strokeStyle = 'rgba(158,61,50,.55)'; c.lineWidth = 2;
+    c.strokeRect(40, 40, W - 80, H - 80);
+    c.strokeStyle = 'rgba(158,61,50,.16)'; c.lineWidth = 1;
+    c.strokeRect(52, 52, W - 104, H - 104);
+
+    // 页眉
+    c.textBaseline = 'alphabetic';
+    c.fillStyle = '#8a7a68'; c.font = '22px ' + SERIF;
+    spaced(c, '三 百 首', M, 118, 4);
+    c.font = '14px ' + SANS; c.fillStyle = '#a2957f';
+    c.textAlign = 'right';
+    c.fillText('377 首古风歌曲', W - M - 124, 116);
+    c.textAlign = 'left';
+
+    // 玩法印
+    c.fillStyle = '#9e3d32';
+    rrect(c, W - M - 100, 90, 100, 40, 2); c.fill();
+    c.fillStyle = '#fbf3e6'; c.font = '19px ' + SERIF; c.textAlign = 'center';
+    c.fillText('词 ' + (spec.mode === '词宗' ? '宗' : '路'), W - M - 50, 118);
+    c.textAlign = 'left';
+
+    // 判定
+    var y = 240;
+    c.fillStyle = spec.win ? '#9e3d32' : '#2f2a24';
+    c.font = '74px ' + SERIF;
+    spaced(c, spec.verdict, M, y, 9);
+    if (spec.win) {
+      c.strokeStyle = 'rgba(158,61,50,.45)'; c.lineWidth = 2;
+      c.beginPath(); c.arc(W - M - 32, y - 24, 33, 0, Math.PI * 2); c.stroke();
+      c.fillStyle = '#9e3d32'; c.font = '21px ' + SERIF; c.textAlign = 'center';
+      c.fillText('胜', W - M - 32, y - 16);
+      c.textAlign = 'left';
+    }
+
+    c.fillStyle = '#5a5249'; c.font = '22px ' + SERIF;
+    c.fillText(spec.line, M, y + 58);
+
+    // 元信息
+    var cx = M, cy = y + 92;
+    c.font = '15px ' + SANS;
+    spec.meta.forEach(function (t) {
+      var w = c.measureText(t).width + 26;
+      c.strokeStyle = 'rgba(90,82,73,.3)'; c.lineWidth = 1;
+      rrect(c, cx, cy, w, 30, 2); c.stroke();
+      c.fillStyle = '#6f665a'; c.fillText(t, cx + 13, cy + 20);
+      cx += w + 8;
+    });
+
+    function hr(yy) {
+      c.strokeStyle = 'rgba(90,82,73,.2)'; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(M, yy); c.lineTo(W - M, yy); c.stroke();
+    }
+    function section(title, yy) {
+      c.fillStyle = '#a2957f'; c.font = '13px ' + SANS;
+      spaced(c, title, M, yy, 2);
+    }
+
+    hr(cy + 48);
+    y = cy + 84;
+    section('对 局', y);
+    y += 32;
+    spec.players.forEach(function (p) {
+      if (p.win) {
+        c.fillStyle = 'rgba(158,61,50,.055)';
+        rrect(c, M - 10, y - 22, W - M * 2 + 20, 40, 2); c.fill();
+      }
+      c.fillStyle = p.me ? '#9e3d32' : '#2f2a24'; c.font = '21px ' + SERIF;
+      c.fillText(p.name + (p.me ? '（你）' : ''), M, y + 4);
+      c.textAlign = 'right';
+      c.font = '15px ' + SANS; c.fillStyle = '#8a7a68';
+      c.fillText('谱中 ' + p.hand + ' 首', W - M - 104, y + 3);
+      c.font = '21px ' + SERIF; c.fillStyle = p.win ? '#9e3d32' : '#5a5249';
+      c.fillText('声名 ' + p.fame, W - M, y + 3);
+      c.textAlign = 'left';
+      y += 44;
+    });
+
+    y += 22; hr(y); y += 38;
+    section(spec.section || '四 条 线', y);
+    y += 32;
+    spec.rows.forEach(function (r) {
+      c.fillStyle = '#5a5249'; c.font = '17px ' + SERIF;
+      c.fillText(r.k, M, y + 3);
+      c.textAlign = 'right'; c.font = '15px ' + SANS; c.fillStyle = '#6f665a';
+      c.fillText(r.v, W - M, y + 2);
+      c.textAlign = 'left';
+      c.fillStyle = 'rgba(90,82,73,.13)';
+      rrect(c, M, y + 11, W - M * 2, 5, 2.5); c.fill();
+      c.fillStyle = r.p >= 1 ? '#9e3d32' : 'rgba(158,61,50,.5)';
+      rrect(c, M, y + 11, Math.max(4, (W - M * 2) * Math.max(0, Math.min(1, r.p))), 5, 2.5); c.fill();
+      y += 40;
+    });
+
+    y += 12; hr(y); y += 38;
+    section('谱 中', y);
+    y += 30;
+    var x2 = M;
+    c.font = '16px ' + SERIF;
+    if (!spec.songs.length) {
+      c.fillStyle = '#b3a894'; c.fillText('（空）', M, y);
+      y += 34;
+    }
+    spec.songs.forEach(function (nm) {
+      var w = c.measureText('《' + nm + '》').width + 20;
+      if (x2 + w > W - M) { x2 = M; y += 36; }
+      c.strokeStyle = 'rgba(158,61,50,.24)'; c.lineWidth = 1;
+      rrect(c, x2, y - 19, w, 30, 2); c.stroke();
+      c.fillStyle = '#7a4038';
+      c.fillText('《' + nm + '》', x2 + 10, y + 2);
+      x2 += w + 8;
+    });
+    return y;
+  }
+
+  function renderShare(spec) {
+    var W = 900;
+    var probe = document.createElement('canvas');
+    probe.width = W; probe.height = 1400;
+    var bottom = paintShare(probe.getContext('2d'), spec, 1400);
+    var H = Math.max(940, Math.min(1500, bottom + 132));
+    var cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    var c = cv.getContext('2d');
+    paintShare(c, spec, H);
+
+    // 页脚
+    var SERIF = '"Songti SC","STSong","SimSun","Noto Serif CJK SC",serif';
+    var SANS = '"PingFang SC","Microsoft YaHei","Hiragino Sans GB",sans-serif';
+    c.fillStyle = '#a2957f'; c.font = '13px ' + SANS;
+    var d = new Date();
+    c.fillText(d.getFullYear() + '.' + (d.getMonth() + 1) + '.' + d.getDate() + '　' + spec.note, 84, H - 76);
+    c.textAlign = 'right';
+    c.fillText('三百首 · 词宗 / 词路', W - 84, H - 76);
+    c.textAlign = 'left';
+    return cv;
+  }
+
+  function showShare(spec) {
+    if (!spec) { toast('还没有可分享的对局'); return; }
+    var cv = renderShare(spec);
+    var url = cv.toDataURL('image/png');
+    var img = $('#share-img');
+    img.src = url;
+    var a = $('#share-dl');
+    var d = new Date();
+    a.href = url;
+    a.download = '三百首_' + spec.mode + '_' + d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2) + '.png';
+    openModal('modal-share');
+  }
+
+  App.showShare = showShare;
+  App.deckShareSpec = deckShareSpec;
+  App.boardShareSpec = boardShareSpec;
 
   function boot() {
     loadData();
