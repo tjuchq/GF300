@@ -731,6 +731,7 @@
     }).join('');
 
     showView('end');
+    var tt = $('#toast'); if (tt) tt.classList.remove('show');
   }
 
   function exportList() {
@@ -1168,6 +1169,18 @@
     if (bs) bs.addEventListener('click', function () { showShare(deckShareSpec()); });
     var bps = $('#bp-share');
     if (bps) bps.addEventListener('click', function () { showShare(boardShareSpec()); });
+    var bpeS = $('#bpe-share');
+    if (bpeS) bpeS.addEventListener('click', function () { showShare(boardShareSpec()); });
+    var bpeA = $('#bpe-again');
+    if (bpeA) bpeA.addEventListener('click', function () {
+      var roster = App.seats.slice(0, App.count).map(function (s, i) {
+        return { name: s.name || (i === 0 ? '你' : '墨客'), isAI: !!s.isAI, isMe: !!s.isMe };
+      });
+      window.SBBoard.start(roster, { firstSeat: 0 });
+      showView('board');
+    });
+    var bpeH = $('#bpe-home');
+    if (bpeH) bpeH.addEventListener('click', function () { showView('intro'); renderIntro(); });
     $('#btn-gather').addEventListener('click', doGather);
 
     ['btn-rules', 'btn-rules-intro'].forEach(function (id) {
@@ -1615,6 +1628,58 @@
     setTimeout(function () { tutShow(3); }, 600);
   }
 
+  /* ---------------- 词路结算页 ---------------- */
+  function showBoardEnd() {
+    var B = window.SBBoard;
+    if (!B || !B.S || !B.S.players.length) return;
+    var S = B.S, me = S.players[S.myIdx], w = S.players[S.winner];
+    var iWin = S.winner === S.myIdx;
+    var cells = S.cells.filter(function (c) { return c.owner === S.myIdx; }).length;
+    var groups = Object.keys(me.rewarded || {}).length;
+    var diffCn = { easy: '初涉', normal: '熟手', hard: '老吏' }[B.cfg.difficulty || 'normal'] || '熟手';
+
+    $('#bpe-title').textContent = iWin ? '路 成' : '路 未 成';
+    $('#bpe-sub').innerHTML = iWin
+      ? '你以声名 <b>' + me.fame + '</b> 先成一家，行 ' + me.lap + ' 卷。'
+      : '<b>' + esc(w.name) + '</b> 以声名 <b>' + w.fame + '</b> 先成一家；你 ' + me.fame + ' 声名，行 ' + me.lap + ' 卷。';
+    $('#bpe-meta').innerHTML =
+      '<span>玩法 <b>词路</b></span><span><b>' + S.players.length + '</b> 人</span>' +
+      '<span>难度 <b>' + diffCn + '</b></span><span><b>' + S.turns + '</b> 手</span>' +
+      '<span>终局 <b>声名 ' + w.fame + '</b></span>';
+
+    // 四行战绩：声名 / 占地 / 成组 / 行棋
+    var rows = [
+      { n: '声名', v: me.fame, t: B.BOARD.fameTarget, p: me.fame / B.BOARD.fameTarget, done: me.fame >= B.BOARD.fameTarget },
+      { n: '占地', v: cells, t: 18, p: cells / 18, done: false },
+      { n: '成组', v: groups, t: 5, p: groups / 5, done: false },
+      { n: '行棋', v: me.lap, t: 3, p: me.lap / 3, done: false }
+    ];
+    $('#bpe-rows').innerHTML = rows.map(function (r) {
+      return '<div class="eg' + (r.done ? ' done' : '') + '">' +
+        '<div class="eg-top"><b>' + r.n + '</b><span>目标 ' + r.t + '</span></div>' +
+        '<div class="eg-line"><i class="sw me"></i><span class="nm">你</span>' +
+        '<span class="bar"><i class="me" style="width:' + Math.max(0, Math.min(100, 100 * r.p)) + '%"></i></span>' +
+        '<span class="val' + (r.done ? ' ok' : '') + '">' + r.v + '</span></div></div>';
+    }).join('');
+
+    var hw = $('#bpe-hand'); hw.innerHTML = '';
+    me.hand.forEach(function (c) {
+      var d = el('div', 'mini' + (c.isSpecial ? ' sp' : ''));
+      d.innerHTML = '<b>' + esc(c.name) + '</b><span class="y">' + c.year + ' · ' + esc((c.type || '').split('-')[0]) + '</span>';
+      d.addEventListener('click', function () { openCard(c, null); });
+      bindArchive(d, c, function () { return null; });
+      hw.appendChild(d);
+    });
+
+    $('#bpe-log').innerHTML = S.log.slice(-30).map(function (l) {
+      return '<div><span class="t">' + (l.kind === 'good' ? '○' : l.kind === 'bad' ? '×' : '·') + '</span>' + esc(l.text) + '</div>';
+    }).join('');
+
+    showView('end-board');
+    var t = $('#toast'); if (t) t.classList.remove('show');
+  }
+  App.showBoardEnd = showBoardEnd;
+
   /* ---------------- 战绩卡（Canvas 生成 PNG） ---------------- */
   var DIFF_LABEL = { easy: '初涉', normal: '熟手', hard: '老吏' };
 
@@ -1626,7 +1691,17 @@
     var iWin = g.state.winner === my;
     var byLabel = { fame: '声名', schools: '立派', eras: '通史', themes: '成题', timeout: '总进度' }[g.state.winBy] || '声名';
 
-    var th = (pg.themes.detail || [])[0] || { count: 0, eras: 0 };
+    // 与结算页同口径：取「最接近成题」的主题（含未成题）
+    var thTally = E.countThemes(me.hand, cfg).tally || {};
+    var thKeys = Object.keys(thTally).sort(function (a, b) { return thTally[b] - thTally[a]; });
+    var thName = thKeys[0];
+    var thEras = 0;
+    if (thName) {
+      var es = {};
+      me.hand.forEach(function (c) { if (c.typeGroup === thName) es[c.era] = 1; });
+      thEras = Object.keys(es).length;
+    }
+    var th = { name: thName, count: thName ? thTally[thName] : 0, eras: thEras };
     var dbl = cfg.eraDoubleSegs || 0, grp = cfg.eraMinGroups || 0;
     var eraP = Math.min(pg.eras.now / cfg.eraTarget, dbl ? (pg.eras.doubles || 0) / dbl : 1, grp ? (pg.eras.groups || 0) / grp : 1);
 
@@ -1643,7 +1718,7 @@
         { k: '声名', v: pg.fame.now + ' / ' + cfg.fameTarget, p: Math.min(1, pg.fame.now / cfg.fameTarget) },
         { k: '通史', v: pg.eras.now + '/6 段 · 双 ' + (pg.eras.doubles || 0) + '/' + dbl + ' · 跨 ' + (pg.eras.groups || 0) + '/' + grp, p: eraP },
         { k: '立派', v: pg.schools.now + ' / ' + cfg.schoolTarget + ' 派', p: Math.min(1, pg.schools.now / cfg.schoolTarget) },
-        { k: '成题', v: th.count + ' 首（跨 ' + (th.eras || 0) + ' 代）/ ' + cfg.themeSize + ' 首 · ' + (cfg.themeEras || 0) + ' 代',
+        { k: '成题', v: (th.name || '—') + ' ' + th.count + ' 首 · 跨 ' + thEras + '/' + (cfg.themeEras || 0) + ' 代（' + cfg.themeSize + ' 首成题）',
           p: Math.min(1, Math.min(th.count / cfg.themeSize, (th.eras || 0) / (cfg.themeEras || 1))) }
       ],
       section: '四 条 线',
@@ -1828,7 +1903,7 @@
     var probe = document.createElement('canvas');
     probe.width = W; probe.height = 1400;
     var bottom = paintShare(probe.getContext('2d'), spec, 1400);
-    var H = Math.max(940, Math.min(1500, bottom + 132));
+    var H = Math.max(820, Math.min(1500, bottom + 120));
     var cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     var c = cv.getContext('2d');

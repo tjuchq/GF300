@@ -813,6 +813,7 @@
     $('#bp-result-sub').innerHTML = iWin
       ? '你以声名 <b>' + w.fame + '</b> 先成一家，行 ' + (w.lap) + ' 卷。'
       : '<b>' + esc(w.name) + '</b> 以声名 <b>' + w.fame + '</b> 先成一家；你 ' + me.fame + ' 声名，行 ' + me.lap + ' 卷。';
+    if (window.SBApp && SBApp.showBoardEnd) { SBApp.showBoardEnd(); return; }
     $('#modal-bp-result').classList.add('open');
   }
 

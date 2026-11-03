@@ -405,7 +405,7 @@ h1, h2, h3 { font-weight: 400; }
 /* =========================================================
    结算
    ========================================================= */
-#view-end.is-active { display: flex; justify-content: center; padding: 46px 24px 80px; }
+#view-end.is-active, #view-end-board.is-active { display: flex; justify-content: center; padding: 46px 24px 80px; }
 .end-wrap { width: 100%; max-width: 780px; }
 
 .rhead { text-align: center; margin-bottom: 8px; }

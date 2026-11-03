@@ -22,6 +22,12 @@
     hardWinNow: true,                                // 老吏：先看「这一张能不能直接赢」
     hardBlock: true,                                 // 老吏：对手下一张就能赢时，抢掉那张
     hardSeatCatch: true,                             // 老吏后手：更积极（降门槛、加阻断）
+    easySeatSlop: [1, 1, 1, 1],                      // 初涉座位松紧（默认关闭：实测噪声不改变强弱）
+    hardSeatFameByN: {                               // 老吏：追声名系数（按人数、按出手位次）
+      2: [0.2, 0.4],
+      3: [0.2, 0.4, 0.6],
+      4: [0.2, 0.4, 0.6, 0.8]
+    }
   };
 
   function avgFamePerCard(game, p) {
@@ -167,9 +173,19 @@
       if (eraWanted) s += 0.9 * deny;
     }
 
-    // 难度噪声
+    // 难度噪声（初涉按座位可再放大：让过强的座位变松）
     var noise = TUNE.noise[difficulty] != null ? TUNE.noise[difficulty] : 0.9;
+    if (difficulty === 'easy' && TUNE.easySeatSlop) {
+      noise *= (TUNE.easySeatSlop[p.seat || 0] || 1);
+    }
     s += (game.rnd() - 0.5) * noise;
+
+    // 老吏后手：更看重声名、少计较墨费（追赶节奏）
+    if (difficulty === 'hard' && TUNE.hardSeatFameByN) {
+      var arr = TUNE.hardSeatFameByN[game.state.players.length] || [];
+      var sf = arr[p.seat || 0] || 0;
+      if (sf) { s += pv.fame * sf; s += pv.cost * 0.15 * sf; }
+    }
 
     return s;
   }
