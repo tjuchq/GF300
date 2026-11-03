@@ -103,7 +103,8 @@ function deckStats(n, cfg, diffs, games, seedBase) {
 const B = {
   size: 49, perEra: 8, fameTarget: 120, startInk: 2, income: 1, passGain: 3,
   gatherInk: 4, groupSize: 3, groupBonus: 3, maxToll: 3, debtPenalty: 5,
-  startBonus: 2, handLimit: 0, tollLapCap: 2, maxTurns: 400
+  startBonus: 2, handLimit: 0, tollLapCap: 2, maxTurns: 400,
+  hardWinNow: true, hardBlock: true, hardBehind: true
 };
 const CHANCE = [
   { ink: 3 }, { ink: 4 }, { fame: 2 }, { fame: 3 }, { ink: 2, fame: 1 },
@@ -276,9 +277,26 @@ function runBoard(seed, n, comp, diffs) {
           const cheap = worth >= 1.0 || ev.fame >= 4;
           const good = gs >= 2.0 || ev.fame >= 5 || worth >= 2.2;
           let buyIt;
-          if (diff === 'easy') buyIt = gs < 1.0;
+          if (diff === 'hard' && B.hardWinNow && p.fame + ev.fame >= B.fameTarget) buyIt = true;
+          else if (diff === 'easy') buyIt = gs < 1.0;
           else if (diff === 'normal') buyIt = rnd() < 0.5;
-          else buyIt = cheap || good;
+          else {
+            buyIt = cheap || good || gs >= 2.5;
+            if (!buyIt && B.hardBlock) {
+              players.forEach(foe => {
+                if (foe.idx === p.idx || foe.fame < p.fame - 8) return;
+                const vals = [{ dim: 'era', v: c.era }, { dim: 'type', v: c.card.typeGroup }];
+                staffOf(c.card).forEach(v => vals.push({ dim: 'staff', v }));
+                vals.forEach(x => { if (countDim(cells, foe.idx, x.dim, x.v) + 1 >= B.groupSize) buyIt = true; });
+              });
+            }
+          }
+
+          if (diff === 'hard' && B.hardBehind) {
+            let lead = 0;
+            players.forEach(f => { if (f.idx !== p.idx && f.fame > lead) lead = f.fame; });
+            if (lead - p.fame >= 5 && ev.fame >= 3) buyIt = true;
+          }
 
           if (!buyIt && diff === 'hard') {
             p.ink += B.gatherInk;

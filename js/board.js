@@ -26,6 +26,9 @@
     startBonus: 2,      // 踩到起点（开卷格）的声名
     handLimit: 0,       // 棋局中最多能辑录几首；0 = 不限
     cols: 7,            // 每行几格（默认 7，可选 4–7）
+    hardWinNow: true,   // 老吏：这一张能到 120 必买
+    hardBlock: true,    // 老吏：抢掉能让对手成组的格子
+    hardBehind: true,   // 老吏落后时更进取
     tollLapCap: 2,      // 同一格被主人重修的上限（每重修一次 +1 墨）
     maxTurns: 400       // 只作死循环兜底，正常对局远到不了
   };
@@ -354,7 +357,7 @@
           toast('《' + c.card.name + '》已重修到顶：' + tollOf(c, p.idx) + ' 墨。', 2200);
         }
       } else {
-        log('回到自己题过的《' + c.card.name + '》。');
+        log('回到自己辑录的《' + c.card.name + '》。');
         if (p.idx === S.myIdx) {
           toast('回到自己的《' + c.card.name + '》；走完一圈后再踩到，过路费才会涨。', 2400);
         }
@@ -366,8 +369,9 @@
       var fee = tollOf(c, c.owner);
       if (p.ink >= fee) {
         p.ink -= fee;
-        log(p.name + ' 参看 ' + owner.name + ' 题过的《' + c.card.name + '》，付润笔 ' + fee +
+        log(p.name + ' 参看 ' + owner.name + ' 辑录的《' + c.card.name + '》，付润笔 ' + fee +
           ' 墨，' + owner.name + ' 声名 +' + fee + '。', 'bad');
+        if (addFame(owner, fee)) return;   // 润笔转成主人的声名（这一行此前漏掉）
         if (p.idx === S.myIdx) {
           toast('翻阅 ' + owner.name + ' 辑录的《' + c.card.name + '》：付 ' + fee + ' 墨，他 +' + fee + ' 声名。', 2800);
         } else if (owner.idx === S.myIdx) {
@@ -542,13 +546,40 @@
     // 三档：只买能推进组的，或明显高值的；其余留墨
     var good = gs >= 2.0 || ev.fame >= 5 || worth >= 2.2;
 
+    // 老吏算胜：这一张买下去就到 120，必买
+    if (diff === 'hard' && BOARD.hardWinNow && p.fame + ev.fame >= BOARD.fameTarget) {
+      log(p.name + ' 看准了：这一张落谱即可立家。', 'good');
+      buy(); return;
+    }
+
+    // 老吏卡人：这张若被领先的对手拿到就成组，先抢下来
+    var denyWorth = 0;
+    if (diff === 'hard' && BOARD.hardBlock) {
+      S.players.forEach(function (foe) {
+        if (foe.idx === p.idx) return;
+        if (foe.fame < p.fame - 8) return;          // 只盯得住的分差
+        var vals = [{ dim: 'era', v: c.era }, { dim: 'type', v: c.card.typeGroup }];
+        staffOf(c.card).forEach(function (v) { vals.push({ dim: 'staff', v: v }); });
+        vals.forEach(function (x) {
+          if (countDim(foe.idx, x.dim, x.v) + 1 >= BOARD.groupSize) denyWorth++;
+        });
+      });
+    }
+
     var buyIt;
     // 初涉：只买「不易成组」的牌（专挑没用的）
     if (diff === 'easy') buyIt = gs < 1.0;
     // 熟手：买不买随机
     else if (diff === 'normal') buyIt = Math.random() < 0.5;
-    // 老吏：只买能推进组的，或明显高值的
-    else buyIt = cheap || good;
+    // 老吏：能成组 / 明显高值 / 能卡住对手
+    else buyIt = cheap || good || gs >= 2.5 || denyWorth > 0;
+
+    // 老吏落后时的进取：落后 5 声名以上，3 声名的牌也拿（不再等好牌）
+    if (diff === 'hard' && BOARD.hardBehind) {
+      var lead = 0;
+      S.players.forEach(function (f) { if (f.idx !== p.idx && f.fame > lead) lead = f.fame; });
+      if (lead - p.fame >= 5 && ev.fame >= 3) buyIt = true;
+    }
 
     // 老吏懂得「不买就采风」：同样停一手，白拿 4 墨
     if (!buyIt && diff === 'hard') {

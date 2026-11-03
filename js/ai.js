@@ -10,7 +10,7 @@
 
   /* 难度参数：配平工具可改；默认值即线上行为 */
   var TUNE = {
-    noise: { easy: 9.0, normal: 0.7, hard: 0.12 },   // 评分噪声
+    noise: { easy: 9.0, normal: 0.7, hard: 0 },      // 评分噪声
     floor: { easy: -1.2, normal: 0.12, hard: 0.3 },  // 低于此分不买
     easyBest: 0.05,   // 初涉：前 5% 拿最优
     easyMid: 0.15,    // 初涉：再 10% 拿二三优
@@ -19,6 +19,9 @@
     chain: { easy: 0.2, normal: 0.8, hard: 1.6 },    // 知音连锁的权重
     deny: { normal: 1, hard: 1.4 },                  // 阻断意识（老吏更会卡人）
     normalGather: 0.08,                              // 熟手偶尔「歇一手」去采风
+    hardWinNow: true,                                // 老吏：先看「这一张能不能直接赢」
+    hardBlock: true,                                 // 老吏：对手下一张就能赢时，抢掉那张
+    hardSeatCatch: true,                             // 老吏后手：更积极（降门槛、加阻断）
   };
 
   function avgFamePerCard(game, p) {
@@ -68,6 +71,20 @@
     if (!ok.length) ok = plans;
     ok.sort(function (a, b) { return a.need - b.need; });
     return { plan: ok[0].key, need: ok[0].need, slots: slots, progress: pg, themeTop: tTopKey };
+  }
+
+  /** 这一张买下去能否直接走通任意一条线（含本次买牌带来的声名） */
+  function winsWith(game, playerIdx, card) {
+    var cfg = game.config;
+    var p = game.player(playerIdx);
+    var pv = game.preview(card.id, playerIdx);
+    if (!pv) return false;
+    if (p.ink < pv.cost) return false;          // 买不起就谈不上威胁/制胜
+    if (p.fame + pv.fame >= cfg.fameTarget) return true;
+    p.hand.push(card);
+    var pg = E.progress(p, cfg);
+    p.hand.pop();
+    return !!(pg.schools.ok || pg.eras.ok || pg.themes.now >= (cfg.themeTarget || 1));
   }
 
   function scoreCard(game, playerIdx, card, planInfo, difficulty) {
@@ -139,6 +156,12 @@
         }
       });
       var deny = TUNE.deny[difficulty] || 1;
+      if (difficulty === 'hard' && TUNE.hardSeatCatch && p.seat > 0) deny *= (1 + 0.12 * p.seat);
+      if (difficulty === 'hard' && TUNE.hardBlock) {
+        foes.forEach(function (foe) {
+          if (winsWith(game, foe.idx, card)) s += 8 * deny;   // 抢掉对手的制胜牌
+        });
+      }
       if (topShared >= 2) s += 1.6 * deny;
       else if (topShared === 1) s += 0.7 * deny;
       if (eraWanted) s += 0.9 * deny;
@@ -204,8 +227,22 @@
     if (!cands.length) return { type: 'gather', plan: planInfo.plan };
     cands.sort(function (a, b) { return b.score - a.score; });
 
+    // 老吏算杀：有任何一张能直接走通一条线，立刻拿（同能赢时取声名高的）
+    if (difficulty === 'hard' && TUNE.hardWinNow) {
+      var killers = cands.filter(function (x) { return winsWith(game, playerIdx, game.card(x.id)); });
+      if (killers.length) {
+        killers.sort(function (a, b) {
+          var fa = game.preview(a.id, playerIdx).fame, fb = game.preview(b.id, playerIdx).fame;
+          return fb - fa;
+        });
+        return { type: 'place', cardId: killers[0].id, plan: planInfo.plan, winNow: true };
+      }
+    }
+
     // 低于门槛就不买（低档 AI 门槛更低，会拿一些废牌；高档只拿有价值的）
     var floor = TUNE.floor[difficulty] != null ? TUNE.floor[difficulty] : 0.12;
+    // 老吏后手：门槛随位次下压，宁可多买一张也不空转
+    if (difficulty === 'hard' && TUNE.hardSeatCatch && p.seat > 0) floor = Math.max(0.05, floor - 0.1 * p.seat);
     var pick = pickByRank(cands, difficulty, game.rnd);
     if (!pick || pick.score < floor) {
       // 手上有钱却没牌可买：高档 AI 宁可采风换牌，初涉会乱拿一张（最优除外）
