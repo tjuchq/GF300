@@ -47,7 +47,7 @@
     schoolPerTwo: true,   // 同一创作者每 schoolSize 首算一派（四首=两派）
     schoolDims: ['lyricist', 'composer'], // 立派只看这几个创作角色
     schoolMinCards: 0,    // 立派还要求谱中至少几张（0 = 不额外要求，用来微调立派难度）
-    schoolDeep: false,    // 有一派用满 4 首时，可免去 schoolMinCards 的张数要求
+    schoolDeep: false,    // 有一派用满 3 首时，可免去 schoolMinCards 的张数要求
     eraTarget: 6,         // 终点线三：通史段数
     eraMinPerEra: 1,      // 每个年代至少几张
     eraDoubleSegs: 4,     // 至少几个年代各有 2 张
