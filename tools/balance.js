@@ -105,7 +105,8 @@ const B = {
   gatherInk: 4, groupSize: 3, groupBonus: 3, maxToll: 3, debtPenalty: 5,
   startBonus: 2, handLimit: 0, tollLapCap: 2, maxTurns: 400,
   hardWinNow: true, hardBlock: true, hardBehind: true,
-  hardDullByN: { 2: [0.10, 0], 3: [0.18, 0, 0], 4: [0.10, 0.06, 0, 0] }
+  hardGatherByN: { 2: [0.10, 0], 3: [0.18, 0, 0], 4: [0.10, 0.06, 0.02, 0] },
+  easySmartByN: { 2: [0, 0], 3: [0, 0, 0.05], 4: [0.25, 0, 0, 0] }
 };
 const CHANCE = [
   { ink: 3 }, { ink: 4 }, { fame: 2 }, { fame: 3 }, { ink: 2, fame: 1 },
@@ -277,9 +278,12 @@ function runBoard(seed, n, comp, diffs) {
           const diff = diffs[p.idx % diffs.length];
           const cheap = worth >= 1.0 || ev.fame >= 4;
           const good = gs >= 2.0 || ev.fame >= 5 || worth >= 2.2;
+          const seatIdx = p.seat == null ? p.idx : p.seat;
+          const smartArr = B.easySmartByN ? B.easySmartByN[n] : null;
+          const smartP = smartArr ? (smartArr[seatIdx] || 0) : 0;
           let buyIt;
           if (diff === 'hard' && B.hardWinNow && p.fame + ev.fame >= B.fameTarget) buyIt = true;
-          else if (diff === 'easy') buyIt = gs < 1.0;
+          else if (diff === 'easy') buyIt = (smartP && rnd() < smartP) ? (rnd() < 0.5) : (gs < 1.0);
           else if (diff === 'normal') buyIt = rnd() < 0.5;
           else {
             buyIt = cheap || good || gs >= 2.5;
@@ -293,10 +297,9 @@ function runBoard(seed, n, comp, diffs) {
             }
           }
 
-          const dArr = B.hardDullByN ? B.hardDullByN[n] : null;
-          const dSeat = p.seat == null ? p.idx : p.seat;
-          const dP = dArr ? (dArr[dSeat] || 0) : 0;
-          if (diff === 'hard' && dP && rnd() < dP) {
+          const gArr = B.hardGatherByN ? B.hardGatherByN[n] : null;
+          const gP = gArr ? (gArr[seatIdx] || 0) : 0;
+          if (diff === 'hard' && gP && rnd() < gP) {
             p.ink += B.gatherInk;
             turn = (turn + 1) % n;
             continue;

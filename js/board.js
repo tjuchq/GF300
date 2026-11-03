@@ -29,7 +29,8 @@
     hardWinNow: true,   // 老吏：这一张能到 120 必买
     hardBlock: true,    // 老吏：抢掉能让对手成组的格子
     hardBehind: true,   // 老吏落后时更进取
-    hardDullByN: { 2: [0.10, 0], 3: [0.18, 0, 0], 4: [0.10, 0.06, 0, 0] },  // 老吏：手位「让一手」概率（削先手）
+    hardGatherByN: { 2: [0.10, 0], 3: [0.18, 0, 0], 4: [0.10, 0.06, 0.02, 0] },  // 老吏：各手位「想买也改采风」的概率（先手最高，压平座位差）
+    easySmartByN: { 2: [0, 0], 3: [0, 0, 0.05], 4: [0.25, 0, 0, 0] },               // 初涉：各手位按熟手策略行动的概率（低胜座位少犯错）
     tollLapCap: 2,      // 同一格被主人重修的上限（每重修一次 +1 墨）
     maxTurns: 400       // 只作死循环兜底，正常对局远到不了
   };
@@ -553,17 +554,6 @@
       buy(); return;
     }
 
-    // 老吏首位偶尔让一手：该买却去采风，专门削先手（压平座位差）
-    var dullArr = BOARD.hardDullByN ? BOARD.hardDullByN[S.players.length] : null;
-    var dullP = dullArr ? (dullArr[p.seat || 0] || 0) : 0;
-    if (diff === 'hard' && dullP && Math.random() < dullP) {
-      p.ink += BOARD.gatherInk;
-      log(p.name + ' 采风，得墨 ' + BOARD.gatherInk + '，本轮不行棋。');
-      render();
-      nextTurn();
-      return;
-    }
-
     // 老吏卡人：这张若被领先的对手拿到就成组，先抢下来
     var denyWorth = 0;
     if (diff === 'hard' && BOARD.hardBlock) {
@@ -578,13 +568,27 @@
       });
     }
 
+    // 初涉「清醒位」：低胜座位按概率改用熟手的随机策略（少犯错）
+    var smartArr = BOARD.easySmartByN ? BOARD.easySmartByN[S.players.length] : null;
+    var smartP = smartArr ? (smartArr[p.seat || 0] || 0) : 0;
     var buyIt;
-    // 初涉：只买「不易成组」的牌（专挑没用的）
-    if (diff === 'easy') buyIt = gs < 1.0;
+    // 初涉：只买「不易成组」的牌（专挑没用的）；清醒位按熟手随机
+    if (diff === 'easy') buyIt = (smartP && Math.random() < smartP) ? (Math.random() < 0.5) : (gs < 1.0);
     // 熟手：买不买随机
     else if (diff === 'normal') buyIt = Math.random() < 0.5;
     // 老吏：能成组 / 明显高值 / 能卡住对手
     else buyIt = cheap || good || gs >= 2.5 || denyWorth > 0;
+
+    // 老吏采风率：想买也按手位概率改去采风（先手最高）
+    var gArr = BOARD.hardGatherByN ? BOARD.hardGatherByN[S.players.length] : null;
+    var gP = gArr ? (gArr[p.seat || 0] || 0) : 0;
+    if (diff === 'hard' && gP && Math.random() < gP) {
+      p.ink += BOARD.gatherInk;
+      log(p.name + ' 采风，得墨 ' + BOARD.gatherInk + '，本轮不行棋。');
+      render();
+      nextTurn();
+      return;
+    }
 
     // 老吏落后时的进取：落后 5 声名以上，3 声名的牌也拿（不再等好牌）
     if (diff === 'hard' && BOARD.hardBehind) {
