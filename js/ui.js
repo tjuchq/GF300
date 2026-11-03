@@ -352,7 +352,10 @@
         sub: '双' + dbl + '/' + needDbl + '·跨' + grp + '/' + needGrp
       },
       {
-        n: '立派', v: pg.schools.now, t: cfg2.schoolTarget, bar: pg.schools.now / cfg2.schoolTarget,
+        n: '立派', v: pg.schools.now, t: cfg2.schoolTarget,
+        bar: Math.min(1,
+          pg.schools.now / cfg2.schoolTarget,
+          cfg2.schoolMinCards ? p.hand.length / cfg2.schoolMinCards : 1),
         done: pg.schools.ok, sub: cfg2.schoolMinCards ? '谱≥' + cfg2.schoolMinCards : ''
       },
       {
@@ -683,7 +686,12 @@
           out.done = pg.themes.now >= 1;
           out.sub = '跨' + te + '/' + cfg.themeEras + '代' + (pg.themes.now ? ' · 已成题' : '');
         } else {
-          out.v = pg.schools.now; out.bar = out.v / target; out.done = out.v >= target;
+          out.v = pg.schools.now;
+          out.bar = Math.min(1,
+            pg.schools.now / target,
+            cfg.schoolMinCards ? p.hand.length / cfg.schoolMinCards : 1);
+          out.done = !!pg.schools.ok;
+          out.sub = cfg.schoolMinCards ? '谱≥' + cfg.schoolMinCards : '';
         }
         return out;
       });
