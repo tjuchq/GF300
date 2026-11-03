@@ -564,6 +564,7 @@
     countThemes: countThemes,
     progress: progress,
     creatorsOf: creatorsOf,
+    staffOf: staffOf,
     sharedCreators: sharedCreators,
     shuffle: shuffle,
     mulberry32: mulberry32
