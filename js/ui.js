@@ -668,8 +668,20 @@
           out.done = !!pg.eras.ok;
           out.sub = '双' + d + '/' + nd + ' 跨' + gr + '/' + ng;
         } else if (key === 'themes') {
-          var list = pg.themes.detail || [];
-          out.v = list.length; out.bar = out.v / target; out.done = out.v >= target;
+          // 与对局面板同口径：显示「最接近成题」的那个主题（张数 + 跨代）
+          var tTally = E.countThemes(p.hand, cfg).tally || {};
+          var tk = Object.keys(tTally).sort(function (a, b) { return tTally[b] - tTally[a]; })[0];
+          var tn = tk ? tTally[tk] : 0;
+          var te = 0;
+          if (tk) {
+            var es = {};
+            p.hand.forEach(function (c) { if (c.typeGroup === tk) es[c.era] = 1; });
+            te = Object.keys(es).length;
+          }
+          out.v = tn;
+          out.bar = Math.min(1, tn / cfg.themeSize, cfg.themeEras ? te / cfg.themeEras : 1);
+          out.done = pg.themes.now >= 1;
+          out.sub = '跨' + te + '/' + cfg.themeEras + '代' + (pg.themes.now ? ' · 已成题' : '');
         } else {
           out.v = pg.schools.now; out.bar = out.v / target; out.done = out.v >= target;
         }
@@ -704,7 +716,7 @@
       bar('声名', 'fame', g.config.fameTarget) +
       bar('通史', 'eras', g.config.eraTarget) +
       bar('立派', 'schools', g.config.schoolTarget) +
-      bar('成题', 'themes', g.config.themeTarget);
+      bar('成题', 'themes', g.config.themeSize);
 
     $('#end-log').innerHTML = g.state.log.slice(-30).map(function (l) {
       return '<div><span class="t">' + l.t + '</span>' + esc(l.text) + '</div>';
@@ -1848,6 +1860,7 @@
     App.openCard = openCard;
     App.showView = showView;
     App.bindArchive = bindArchive;
+    App.renderAll = renderAll;
     if (!App.data || !App.data.cards) {
       document.body.innerHTML = '<div style="padding:60px">数据未加载：请确认 data/cards.js 存在。</div>';
       return;

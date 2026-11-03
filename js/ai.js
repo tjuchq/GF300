@@ -112,8 +112,9 @@
       if (card.typeGroup !== planInfo.themeTop && cnt === 0) s -= 0.8;             // 另起一题更慢
     } else if (plan === 'schools') {
       var tally = pg.schools ? (E.countSchools(p.hand).tally || {}) : {};
-      var near = E.creatorsOf(card).filter(function (v) { return (tally[v] || 0) >= cfg.schoolSize - 1; });
-      var seeded = E.creatorsOf(card).filter(function (v) { return (tally[v] || 0) === 1; });
+      var staff = E.staffOf(card);
+      var near = staff.filter(function (v) { return (tally[v] || 0) >= cfg.schoolSize - 1; });
+      var seeded = staff.filter(function (v) { return (tally[v] || 0) === 1; });
       if (near.length) s += 3.2 * near.length;
       s += Math.min(seeded.length, 2) * 0.55;
       if (near.length && pg.schools.now + 1 >= cfg.schoolTarget) s += 5;

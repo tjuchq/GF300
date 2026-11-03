@@ -106,6 +106,17 @@
     return out;
   }
 
+  /** 立派/班底口径：只算词人与曲师（同一张里词曲同人只算一次） */
+  function staffOf(card) {
+    var set = {}, out = [];
+    ['lyricist', 'composer'].forEach(function (k) {
+      (card[k] || []).forEach(function (v) {
+        if (v && !set[v]) { set[v] = 1; out.push(v); }
+      });
+    });
+    return out;
+  }
+
   function sharedCreators(card, hand) {
     var mine = creatorsOf(card);
     if (!mine.length || !hand.length) return [];
@@ -322,6 +333,9 @@
       if (BAL.income) this.config.income = BAL.income;
       if (BAL.inkStep != null) this.config.secondBonus = BAL.inkStep;
       if (BAL.fameTable) this.config.seatFameTable = BAL.fameTable;
+      if (BAL.schoolMinCards != null) this.config.schoolMinCards = BAL.schoolMinCards;
+      if (BAL.schoolDeep != null) this.config.schoolDeep = BAL.schoolDeep;
+      if (BAL.aiBias) this.config.aiBias = BAL.aiBias;
     }
 
     // 显式覆盖放在人数表之后，调试/模拟时才能压过 BALANCE

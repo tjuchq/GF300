@@ -196,13 +196,24 @@
   }
 
   /** 该玩家在某个维度上占了几格（只看已辑录的歌格） */
+  /** 班底口径与词宗立派一致：只算词人与曲师（同一张里词曲同人只算一次） */
+  function staffOf(card) {
+    var set = {}, out = [];
+    ['lyricist', 'composer'].forEach(function (k) {
+      (card[k] || []).forEach(function (v) {
+        if (v && !set[v]) { set[v] = 1; out.push(v); }
+      });
+    });
+    return out;
+  }
+
   function countDim(playerIdx, dim, val) {
     var n = 0;
     S.cells.forEach(function (c) {
       if (c.owner !== playerIdx || !c.card) return;
       if (dim === 'era' && c.era === val) n++;
       else if (dim === 'type' && c.card.typeGroup === val) n++;
-      else if (dim === 'staff' && E.creatorsOf(c.card).indexOf(val) >= 0) n++;
+      else if (dim === 'staff' && staffOf(c.card).indexOf(val) >= 0) n++;
     });
     return n;
   }
@@ -212,7 +223,7 @@
     var counts = [countDim(ownerIdx, 'era', cell.era)];
     if (cell.card) {
       counts.push(countDim(ownerIdx, 'type', cell.card.typeGroup));
-      E.creatorsOf(cell.card).forEach(function (v) {
+      staffOf(cell.card).forEach(function (v) {
         counts.push(countDim(ownerIdx, 'staff', v));
       });
     }
@@ -227,7 +238,7 @@
       if (c.owner !== p.idx || !c.card) return;
       tally['era:' + c.era] = (tally['era:' + c.era] || 0) + 1;
       tally['type:' + c.card.typeGroup] = (tally['type:' + c.card.typeGroup] || 0) + 1;
-      E.creatorsOf(c.card).forEach(function (v) {
+      staffOf(c.card).forEach(function (v) {
         tally['staff:' + v] = (tally['staff:' + v] || 0) + 1;
       });
     });
@@ -505,7 +516,7 @@
   function groupScore(p, card) {
     var cell = S.cells[p.pos];
     var vals = [{ dim: 'era', v: cell.era }, { dim: 'type', v: card.typeGroup }];
-    E.creatorsOf(card).forEach(function (v) { vals.push({ dim: 'staff', v: v }); });
+    staffOf(card).forEach(function (v) { vals.push({ dim: 'staff', v: v }); });
 
     var score = 0;
     vals.forEach(function (x) {
@@ -638,7 +649,7 @@
       if (c.owner !== p.idx || !c.card) return;
       if (c.era >= 0) eraCnt[c.era] = (eraCnt[c.era] || 0) + 1;
       typeCnt[c.card.typeGroup] = (typeCnt[c.card.typeGroup] || 0) + 1;
-      E.creatorsOf(c.card).forEach(function (v) { staffCnt[v] = (staffCnt[v] || 0) + 1; });
+      staffOf(c.card).forEach(function (v) { staffCnt[v] = (staffCnt[v] || 0) + 1; });
     });
 
     function pill(name, n) {

@@ -140,13 +140,23 @@ function boardComp(n, inkStep, fameTable, income) {
   };
 }
 
+function staffOf(card) {
+  const set = {}, out = [];
+  ['lyricist', 'composer'].forEach(k => (card[k] || []).forEach(v => { if (v && !set[v]) { set[v] = 1; out.push(v); } }));
+  return out;
+}
+
 function countDim(cells, idx, dim, val) {
   let n = 0;
   cells.forEach(c => {
     if (c.owner !== idx || !c.card) return;
     if (dim === 'era' && c.era === val) n++;
     else if (dim === 'type' && c.card.typeGroup === val) n++;
-    else if (dim === 'staff' && E.creatorsOf(c.card).indexOf(val) >= 0) n++;
+    else if (dim === 'staff') {
+      const set = {};
+      ['lyricist', 'composer'].forEach(k => (c.card[k] || []).forEach(v => { if (v) set[v] = 1; }));
+      if (set[val]) n++;
+    }
   });
   return n;
 }
@@ -155,7 +165,7 @@ function tollOf(cells, cell, owner) {
   const counts = [countDim(cells, owner, 'era', cell.era)];
   if (cell.card) {
     counts.push(countDim(cells, owner, 'type', cell.card.typeGroup));
-    E.creatorsOf(cell.card).forEach(v => counts.push(countDim(cells, owner, 'staff', v)));
+    staffOf(cell.card).forEach(v => counts.push(countDim(cells, owner, 'staff', v)));
   }
   const base = Math.max(1, Math.min(B.maxToll, Math.max.apply(null, counts)));
   return base + (cell.tollBonus || 0);
@@ -167,7 +177,7 @@ function checkGroups(cells, p) {
     if (c.owner !== p.idx || !c.card) return;
     tally['era:' + c.era] = (tally['era:' + c.era] || 0) + 1;
     tally['type:' + c.card.typeGroup] = (tally['type:' + c.card.typeGroup] || 0) + 1;
-    E.creatorsOf(c.card).forEach(v => { tally['staff:' + v] = (tally['staff:' + v] || 0) + 1; });
+    staffOf(c.card).forEach(v => { tally['staff:' + v] = (tally['staff:' + v] || 0) + 1; });
   });
   let bonus = 0;
   Object.keys(tally).forEach(k => {
@@ -180,7 +190,7 @@ function checkGroups(cells, p) {
 
 function groupScore(cells, p, card, cell) {
   const vals = [{ dim: 'era', v: cell.era }, { dim: 'type', v: card.typeGroup }];
-  E.creatorsOf(card).forEach(v => vals.push({ dim: 'staff', v }));
+  staffOf(card).forEach(v => vals.push({ dim: 'staff', v }));
   let s = 0;
   vals.forEach(x => {
     const c = countDim(cells, p.idx, x.dim, x.v);
