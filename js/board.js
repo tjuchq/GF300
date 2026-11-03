@@ -358,9 +358,9 @@
         log(p.name + ' 参看 ' + owner.name + ' 题过的《' + c.card.name + '》，付润笔 ' + fee +
           ' 墨，' + owner.name + ' 声名 +' + fee + '。', 'bad');
         if (p.idx === S.myIdx) {
-          toast('踩到 ' + owner.name + ' 的《' + c.card.name + '》：付 ' + fee + ' 墨，他 +' + fee + ' 声名。', 2800);
+          toast('翻阅 ' + owner.name + ' 辑录的《' + c.card.name + '》：付 ' + fee + ' 墨，他 +' + fee + ' 声名。', 2800);
         } else if (owner.idx === S.myIdx) {
-          toast(esc(p.name) + ' 踩了你的《' + c.card.name + '》：你 +' + fee + ' 声名。', 2800);
+          toast(esc(p.name) + ' 翻阅了你辑录的《' + c.card.name + '》：你 +' + fee + ' 声名。', 2800);
         }
       } else {
         p.fame = Math.max(0, p.fame - BOARD.debtPenalty);
@@ -612,7 +612,7 @@
         (who ? '<div class="c-owner" style="color:' + playerColor(who.idx) + '">' + esc(who.name) +
           (function () {
             var fee = tollOf(cell, who.idx);
-            return '<i class="c-toll" title="踩到这一格要付 ' + fee + ' 墨，并让 ' + esc(who.name) + ' +' + fee + ' 声名' +
+            return '<i class="c-toll" title="翻阅这一格要付 ' + fee + ' 墨，并让 ' + esc(who.name) + ' +' + fee + ' 声名' +
               ((cell.tollBonus || 0) ? '（主人重修过 ' + cell.tollBonus + ' 次）' : '') + '">' + fee + '墨</i>';
           })() + '</div>' : '') +
         '<div class="c-pieces">' + pieces + '</div>';
