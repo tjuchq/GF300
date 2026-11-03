@@ -43,7 +43,7 @@
     themeTarget: 1,       // 需要成几题
     themeEras: 3,         // 成题的几张须跨几个不同年代
     schoolSize: 2,        // 立一派需要同一创作者几首
-    schoolExclusive: false,// 一张牌只能计入一派
+    schoolExclusive: false,// 一张牌可以同时计入两派（词人 + 曲师）
     schoolPerTwo: true,   // 同一创作者每 schoolSize 首算一派（四首=两派）
     schoolDims: ['lyricist', 'composer'], // 立派只看这几个创作角色
     schoolMinCards: 0,    // 立派还要求谱中至少几张（0 = 不额外要求，用来微调立派难度）
@@ -265,6 +265,7 @@
         ratio: Math.min(1, schools.total / cfg.schoolTarget),
         detail: schools.detail,
         minCards: cfg.schoolMinCards || 0,
+        deep: !!(cfg.schoolDeep && schools.detail.some(function (d) { return (d.count || 0) >= 3; })),
         ok: schools.total >= cfg.schoolTarget && (
           player.hand.length >= (cfg.schoolMinCards || 0) ||
           (cfg.schoolDeep && schools.detail.some(function (d) { return (d.count || 0) >= 3; }))

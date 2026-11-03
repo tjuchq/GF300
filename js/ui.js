@@ -21,6 +21,7 @@
     lastMode: 'deck',
     seats: [],
     myIdx: 0,
+    viewIdx: 0,
     busy: false,
     paused: false,
     pendingEnd: false,
@@ -149,6 +150,15 @@
     }
   }
 
+  /** 非「我」席位取一个不重复的人名，避免出现两个「你」 */
+  function humanDefaultName(pos) {
+    var used = {};
+    App.seats.forEach(function (x) { if (x.name) used[x.name] = 1; });
+    var pool = ['玩家二', '玩家三', '玩家四'];
+    for (var i = 0; i < pool.length; i++) if (!used[pool[i]]) return pool[i];
+    return HUMAN_NAMES[pos] || ('玩家' + (pos + 1));
+  }
+
   function buildSeats() {
     if (!App.seats.length) App.seats = defaultSeats();
     keepMeVisible();
@@ -165,7 +175,7 @@
 
       var inp = row.querySelector('input');
       inp.addEventListener('input', function () {
-        st.name = inp.value.trim() || (st.isAI ? AI_NAMES[pos - 1] || '墨客' : (st.isMe ? HUMAN_NAMES[0] : HUMAN_NAMES[pos] || ('玩家' + (pos + 1))));
+        st.name = inp.value.trim() || (st.isAI ? (AI_NAMES[pos - 1] || '墨客') : (st.isMe ? HUMAN_NAMES[0] : humanDefaultName(pos)));
         st.manual = true;
       });
 
@@ -174,7 +184,7 @@
         if (st.isMe) { toast('这一席是你自己，不能改成「机」'); return; }
         st.isAI = !st.isAI;
         if (!st.manual) {
-          st.name = st.isAI ? (AI_NAMES[pos - 1] || '墨客') : (HUMAN_NAMES[pos] || ('玩家' + (pos + 1)));
+          st.name = st.isAI ? (AI_NAMES[pos - 1] || '墨客') : (st.isMe ? HUMAN_NAMES[0] : humanDefaultName(pos));
           inp.value = st.name;
         }
         kb.dataset.k = st.isAI ? 'ai' : 'human';
@@ -265,8 +275,12 @@
       return '<div class="sc' + (i === cur && !over ? ' now' : '') + '">' + esc(p.name) + '<b>' + p.fame + '</b></div>';
     }).join('');
 
+    // 热座（≥2 个真人）：面板跟着当前出手的人走，否则固定显示「我」
+    var humans = g.state.players.filter(function (p) { return !p.isAI; }).length;
+    App.viewIdx = (humans > 1 && !curPlayer().isAI) ? cur : App.myIdx;
+
     // 对手
-    var myIdx = App.myIdx;
+    var myIdx = App.viewIdx;
     var foes = g.state.players.filter(function (p) { return p.idx !== myIdx; });
     var wrap = $('#foes');
     wrap.dataset.n = String(foes.length);
@@ -356,7 +370,10 @@
         bar: Math.min(1,
           pg.schools.now / cfg2.schoolTarget,
           cfg2.schoolMinCards ? p.hand.length / cfg2.schoolMinCards : 1),
-        done: pg.schools.ok, sub: cfg2.schoolMinCards ? '谱≥' + cfg2.schoolMinCards : ''
+        done: pg.schools.ok,
+        sub: (pg.schools.deep && p.hand.length < cfg2.schoolMinCards)
+          ? '谱≥' + cfg2.schoolMinCards + ' · 深派免'
+          : '谱≥' + cfg2.schoolMinCards
       },
       {
         n: '成题', v: tTopN, t: cfg2.themeSize, bar: themeBar,
@@ -466,7 +483,7 @@
   function renderTimeline() {
     var g = App.game, wrap = $('#timeline');
     var eras = App.data.meta.eras || [];
-    var p = g.state.players[App.myIdx];
+    var p = g.state.players[App.viewIdx];
     var cfg = g.config;
     var needDouble = cfg.eraDoubleSegs || 0;
     var needGroups = cfg.eraMinGroups || 3;
@@ -509,7 +526,7 @@
   function renderSide() {
     var g = App.game, wrap = $('#side-me');
     if (!wrap) return;
-    var p = g.state.players[App.myIdx];
+    var p = g.state.players[App.viewIdx];
     var cfg = g.config;
 
     // --- 班底：与立派同口径，只算词人 / 曲师
@@ -691,7 +708,9 @@
             pg.schools.now / target,
             cfg.schoolMinCards ? p.hand.length / cfg.schoolMinCards : 1);
           out.done = !!pg.schools.ok;
-          out.sub = cfg.schoolMinCards ? '谱≥' + cfg.schoolMinCards : '';
+          out.sub = (pg.schools.deep && p.hand.length < cfg.schoolMinCards)
+            ? '谱≥' + cfg.schoolMinCards + ' · 深派免'
+            : '谱≥' + cfg.schoolMinCards;
         }
         return out;
       });
@@ -895,7 +914,7 @@
           '<b>全谱</b>共跨 <b>' + b2.groups + ' / ' + b3.groups + ' / ' + b4.groups +
           '</b> 个主题（不是只看那 4 段）</td><td>按年代铺开，抢年代空位</td></tr>',
         '<tr><td><b>立派</b></td><td>立 <b>' + b2.schools + ' / ' + b3.schools + ' / ' + b4.schools +
-          '</b> 派：同一位词人或曲师每 2 首算 1 派</td><td>死磕同几位创作者</td></tr>',
+          '</b> 派：同一位词人或曲师每 2 首算 1 派；另有张数门槛（见下）</td><td>死磕同几位创作者</td></tr>',
         '<tr><td><b>成题</b></td><td>同一主题 <b>' + b2.themeSize + ' / ' + b3.themeSize + ' / ' + b4.themeSize +
           '</b> 首，且跨 <b>' + b2.themeEras + ' / ' + b3.themeEras + ' / ' + b4.themeEras + '</b> 个年代</td><td>按主题横向收束，一类到底</td></tr>',
       '</table>',
@@ -904,7 +923,8 @@
       '<p><b>立派按「每两首」算。</b>同一位创作者在你谱里有 2 首＝1 派，有 4 首＝2 派。只算词人、曲师两类角色，同一张牌可以同时算进两派。' +
         '<br>例：河图 2 首（1 派）、Finale 4 首（2 派）、银临 2 首（1 派）——合计 4 派。' +
         '<br><b>张数门槛</b>：二人、三人局谱里至少 <b>10</b> 首，四人局 <b>11</b> 首。' +
-        '若其中某一位词人或曲师已经出现 <b>3</b> 首（也就是这一派已有 3 张），可免这条张数要求。</p>',
+        '但如果某一位词人或曲师已经在你谱里出现 <b>3</b> 首（也就是这一派已有 3 张），这条张数要求就免了——' +
+        '此时 8 张牌凑出 5 派也算立派成功，进度条会标「深派免」。</p>',
       '<div class="note">' +
         '<b>跨角色也算。</b>甲是 A 的歌的词人，又是 B 的歌的曲师——A 与 B 合起来可以算甲的一派。<br>' +
         '<b>但同一首歌里词、曲都是甲，只算一张</b>，不能自己跟自己成组。' +
