@@ -28,24 +28,33 @@
 
     // 每条线换算成「还差几张牌」，才好在同一尺度上比
     var tTally = E.countThemes(p.hand, cfg).tally || {};
-    var tTop = 0;
-    Object.keys(tTally).forEach(function (k) { if (tTally[k] > tTop) tTop = tTally[k]; });
+    var tTopKey = null, tTopN = 0;
+    Object.keys(tTally).forEach(function (k) {
+      if (tTally[k] > tTopN) { tTopN = tTally[k]; tTopKey = k; }
+    });
     var tEras = 0;
-    p.hand.forEach(function (c) { if ((tTally[c.typeGroup] || 0) === tTop) tEras = Math.max(tEras, 0); });
+    if (tTopKey) {
+      var eset = {};
+      p.hand.forEach(function (c) { if (c.typeGroup === tTopKey) eset[c.era] = 1; });
+      tEras = Object.keys(eset).length;
+    }
     var eraMissing = Math.max(0, cfg.eraTarget - pg.eras.now);
     var doubleMissing = Math.max(0, (cfg.eraDoubleSegs || 0) - (pg.eras.doubles || 0));
     var groupMissing = Math.max(0, (cfg.eraMinGroups || 0) - (pg.eras.groups || 0));
+    var bias = cfg.aiBias || {};
     var plans = [
       { key: 'fame',  need: Math.max(0, (cfg.fameTarget - pg.fame.now) / avg) },
       { key: 'schools', need: Math.max(0, (cfg.schoolTarget - pg.schools.now) * 2.0) },
       { key: 'eras',  need: eraMissing + doubleMissing * 0.7 + groupMissing * 0.6 },
-      { key: 'themes', need: Math.max(0, cfg.themeSize - tTop) }
+      // 成题要同时满足「首数」与「跨代」，缺一不可：取两者中更缺的那个
+      { key: 'themes', need: Math.max(0, cfg.themeSize - tTopN, (cfg.themeEras || 0) - tEras) }
     ];
-    plans.forEach(function (x) { x.feasible = x.need <= slots + 0.01; });
+    // 主线权重：规则不改，只让墨客别一窝蜂挤同一条线（配平工具用）
+    plans.forEach(function (x) { x.need *= (bias[x.key] == null ? 1 : bias[x.key]); x.feasible = x.need <= slots + 0.01; });
     var ok = plans.filter(function (x) { return x.feasible; });
     if (!ok.length) ok = plans;
     ok.sort(function (a, b) { return a.need - b.need; });
-    return { plan: ok[0].key, need: ok[0].need, slots: slots, progress: pg };
+    return { plan: ok[0].key, need: ok[0].need, slots: slots, progress: pg, themeTop: tTopKey };
   }
 
   function scoreCard(game, playerIdx, card, planInfo, difficulty) {
@@ -71,10 +80,17 @@
     } else if (plan === 'themes') {
       var tTally = E.countThemes(p.hand, cfg).tally || {};
       var cnt = tTally[card.typeGroup] || 0;
-      if (cnt >= cfg.themeSize - 1) s += 4.5;          // 这一张就能成题
-      else if (cnt >= cfg.themeSize - 2) s += 2.0;     // 差两张
+      var eset = {}, eras = 0;
+      p.hand.forEach(function (c) { if (c.typeGroup === card.typeGroup) eset[c.era] = 1; });
+      eras = Object.keys(eset).length;
+      var newEra = !eset[card.era];
+      var afterN = cnt + 1, afterE = eras + (newEra ? 1 : 0);
+      if (afterN >= cfg.themeSize && afterE >= (cfg.themeEras || 0)) s += 7;      // 这一张就成题
+      else if (afterN >= cfg.themeSize) s += 3;                                    // 首数够了，还差跨代
+      else if (cnt >= cfg.themeSize - 2) s += 2.2;                                 // 只差一两张
       else if (cnt >= 1) s += 0.6;
-      if (cnt + 1 >= cfg.themeSize) s += 4;
+      if (newEra && afterE >= (cfg.themeEras || 0)) s += 1.2;                      // 把跨代补齐
+      if (card.typeGroup !== planInfo.themeTop && cnt === 0) s -= 0.8;             // 另起一题更慢
     } else if (plan === 'schools') {
       var tally = pg.schools ? (E.countSchools(p.hand).tally || {}) : {};
       var near = E.creatorsOf(card).filter(function (v) { return (tally[v] || 0) >= cfg.schoolSize - 1; });
@@ -108,7 +124,7 @@
     }
 
     // 难度噪声
-    var noise = difficulty === 'easy' ? 2.2 : difficulty === 'hard' ? 0.25 : 0.9;
+    var noise = difficulty === 'easy' ? 3.5 : difficulty === 'hard' ? 0.25 : 0.9;
     s += (game.rnd() - 0.5) * noise;
 
     return s;
@@ -124,8 +140,8 @@
     if (difficulty === 'hard' || cands.length === 1) return cands[0];
     var r = rnd();
     if (difficulty === 'easy') {
-      if (r < 0.5) return cands[0];
-      if (r < 0.75) {
+      if (r < 0.3) return cands[0];
+      if (r < 0.55) {
         var k = 1 + Math.floor(rnd() * Math.min(2, cands.length - 1));
         return cands[k] || cands[0];
       }

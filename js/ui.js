@@ -18,9 +18,12 @@
     difficulty: 'easy',
     count: 2,
     mode: 'deck',
-    humanFirst: true,
+    lastMode: 'deck',
     seats: [],
+    myIdx: 0,
     busy: false,
+    paused: false,
+    pendingEnd: false,
     usingOverride: false,
     lib: null
   };
@@ -46,6 +49,37 @@
     d.style.left = x + 'px'; d.style.top = y + 'px';
     document.body.appendChild(d);
     setTimeout(function () { d.remove(); }, 1000);
+  }
+
+  /** 右键 / 手机长按 → 读解析（同一套入口，卡面与棋格都用它） */
+  function bindArchive(dom, card, getPv) {
+    dom.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+      openCard(card, getPv ? getPv() : null);
+    });
+    var timer = null, sx = 0, sy = 0;
+    dom.addEventListener('touchstart', function (e) {
+      var t = e.touches[0];
+      sx = t.clientX; sy = t.clientY;
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        timer = null;
+        dom._lp = Date.now();
+        openCard(card, getPv ? getPv() : null);
+      }, 520);
+    }, { passive: true });
+    dom.addEventListener('touchmove', function (e) {
+      if (!timer) return;
+      var t = e.touches[0];
+      if (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) {
+        clearTimeout(timer); timer = null;
+      }
+    }, { passive: true });
+    dom.addEventListener('touchend', function () { clearTimeout(timer); timer = null; });
+    dom.addEventListener('touchcancel', function () { clearTimeout(timer); timer = null; });
+  }
+  function justLongPressed(dom) {
+    return dom._lp && Date.now() - dom._lp < 900;
   }
 
   /* ---------------- 数据 ---------------- */
@@ -82,45 +116,130 @@
     ].map(function (x) { return '<div class="st"><b>' + x[0] + '</b><span>' + x[1] + '</span></div>'; }).join('');
 
     $('#src-meta').textContent = '· 数据版本 ' + (meta.generatedAt || '未知') + (App.usingOverride ? '（本地导入版）' : '');
+    updateResume();
     buildSeats();
   }
 
-  function buildSeats() {
-    if (!App.seats.length) {
-      App.seats = [];
-      for (var i = 0; i < 4; i++) {
-        App.seats.push({ name: i === 0 ? HUMAN_NAMES[0] : AI_NAMES[i - 1], isAI: i !== 0, manual: false });
-      }
+  function defaultSeats() {
+    var arr = [];
+    for (var i = 0; i < 4; i++) {
+      arr.push({
+        id: 's' + i,
+        name: i === 0 ? HUMAN_NAMES[0] : AI_NAMES[i - 1],
+        isAI: i !== 0,
+        isMe: i === 0,
+        manual: false
+      });
     }
+    return arr;
+  }
+
+  function orderSeats() {
+    return App.seats.slice(0, App.count);
+  }
+
+  /** 把「我」留在可见席位里：人数调小时，若「我」被挤出前 N 位，就换到末位 */
+  function keepMeVisible() {
+    var i = App.seats.findIndex(function (s) { return s.isMe; });
+    if (i < 0) { App.seats[0].isMe = true; i = 0; }
+    if (i >= App.count) {
+      var t = App.seats[App.count - 1];
+      App.seats[App.count - 1] = App.seats[i];
+      App.seats[i] = t;
+    }
+  }
+
+  function buildSeats() {
+    if (!App.seats.length) App.seats = defaultSeats();
+    keepMeVisible();
     var wrap = $('#seats');
     wrap.innerHTML = '';
-    for (var i = 0; i < App.count; i++) {
-      (function (idx) {
-        var st = App.seats[idx];
-        var row = el('div', 'seat');
-        row.innerHTML =
-          '<span class="idx">' + CN[idx] + '</span>' +
-          '<input value="' + esc(st.name) + '" maxlength="8" ' + (idx === 0 ? '' : '') + '>' +
-          '<button class="kind" data-k="' + (st.isAI ? 'ai' : 'human') + '">' + (st.isAI ? '机' : '人') + '</button>';
-        var inp = row.querySelector('input');
-        inp.addEventListener('input', function () {
-          st.name = inp.value.trim() || (st.isAI ? AI_NAMES[idx - 1] || '墨客' : HUMAN_NAMES[idx]);
-          st.manual = true;
-        });
-        var kb = row.querySelector('.kind');
-        kb.addEventListener('click', function () {
-          if (idx === 0) { toast('首位固定为「人」，其余座位可切换'); return; }
-          st.isAI = !st.isAI;
-          if (!st.manual) {
-            st.name = st.isAI ? (AI_NAMES[idx - 1] || '墨客') : (HUMAN_NAMES[idx] || ('玩家' + (idx + 1)));
-            inp.value = st.name;
-          }
-          kb.dataset.k = st.isAI ? 'ai' : 'human';
-          kb.textContent = st.isAI ? '机' : '人';
-        });
-        wrap.appendChild(row);
-      })(i);
+    orderSeats().forEach(function (st, pos) {
+      var row = el('div', 'seat' + (st.isMe ? ' me' : ''));
+      row.dataset.id = st.id;
+      row.innerHTML =
+        '<span class="grip" title="按住拖动，改出手顺序">⋮⋮</span>' +
+        '<span class="idx">' + CN[pos] + '</span>' +
+        '<input value="' + esc(st.name) + '" maxlength="8">' +
+        '<button class="kind" data-k="' + (st.isAI ? 'ai' : 'human') + '">' + (st.isAI ? '机' : '人') + '</button>';
+
+      var inp = row.querySelector('input');
+      inp.addEventListener('input', function () {
+        st.name = inp.value.trim() || (st.isAI ? AI_NAMES[pos - 1] || '墨客' : (st.isMe ? HUMAN_NAMES[0] : HUMAN_NAMES[pos] || ('玩家' + (pos + 1))));
+        st.manual = true;
+      });
+
+      var kb = row.querySelector('.kind');
+      kb.addEventListener('click', function () {
+        if (st.isMe) { toast('这一席是你自己，不能改成「机」'); return; }
+        st.isAI = !st.isAI;
+        if (!st.manual) {
+          st.name = st.isAI ? (AI_NAMES[pos - 1] || '墨客') : (HUMAN_NAMES[pos] || ('玩家' + (pos + 1)));
+          inp.value = st.name;
+        }
+        kb.dataset.k = st.isAI ? 'ai' : 'human';
+        kb.textContent = st.isAI ? '机' : '人';
+      });
+
+      bindSeatDrag(row, wrap);
+      wrap.appendChild(row);
+    });
+  }
+
+  /* 座位直接拖动：整行都能拖（输入框与按钮除外），松手后把顺序写回 App.seats */
+  var seatDrag = null;
+
+  function bindSeatDrag(row, wrap) {
+    row.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('input, button')) return;
+      if (e.button != null && e.button !== 0) return;
+      e.preventDefault();
+      seatDrag = { row: row, wrap: wrap, id: e.pointerId };
+      row.classList.add('dragging');
+      try { row.setPointerCapture(e.pointerId); } catch (err) {}
+      document.addEventListener('pointermove', onSeatMove);
+      document.addEventListener('pointerup', onSeatUp);
+      document.addEventListener('pointercancel', onSeatUp);
+    });
+  }
+
+  function onSeatMove(e) {
+    if (!seatDrag) return;
+    var d = seatDrag, row = d.row, wrap = d.wrap;
+    var y = e.clientY;
+    var rows = Array.prototype.slice.call(wrap.querySelectorAll('.seat'));
+    var target = null;
+    rows.forEach(function (r) {
+      if (r === row) return;
+      var b = r.getBoundingClientRect();
+      if (y >= b.top && y <= b.bottom) target = r;
+    });
+    if (!target) {
+      if (y < rows[0].getBoundingClientRect().top) target = rows[0];
+      else if (y > rows[rows.length - 1].getBoundingClientRect().bottom) target = rows[rows.length - 1];
     }
+    if (!target) return;
+    var tb = target.getBoundingClientRect();
+    if (y < tb.top + tb.height / 2) wrap.insertBefore(row, target);
+    else wrap.insertBefore(row, target.nextSibling);
+  }
+
+  function onSeatUp(e) {
+    if (!seatDrag) return;
+    var d = seatDrag, row = d.row, wrap = d.wrap;
+    seatDrag = null;
+    row.classList.remove('dragging');
+    document.removeEventListener('pointermove', onSeatMove);
+    document.removeEventListener('pointerup', onSeatUp);
+    document.removeEventListener('pointercancel', onSeatUp);
+    try { row.releasePointerCapture(e.pointerId); } catch (err) {}
+    var ids = Array.prototype.slice.call(wrap.querySelectorAll('.seat')).map(function (r) { return r.dataset.id; });
+    var ordered = ids.map(function (id) {
+      return App.seats.filter(function (s) { return s.id === id; })[0];
+    }).filter(Boolean);
+    App.seats.forEach(function (s) { if (ordered.indexOf(s) < 0) ordered.push(s); });
+    App.seats = ordered;
+    buildSeats();
   }
 
   /* ---------------- 渲染 ---------------- */
@@ -147,16 +266,17 @@
     }).join('');
 
     // 对手
-    var foes = g.state.players.filter(function (p) { return p.idx !== 0; });
+    var myIdx = App.myIdx;
+    var foes = g.state.players.filter(function (p) { return p.idx !== myIdx; });
     var wrap = $('#foes');
     wrap.dataset.n = String(foes.length);
     wrap.innerHTML = '';
     foes.forEach(function (p) { wrap.appendChild(buildZone(p, true)); });
 
     // 自己
-    var me = g.state.players[0];
+    var me = g.state.players[myIdx];
     var z = $('#zone-me');
-    z.className = 'zone me' + (cur === 0 && !over ? ' now' : '');
+    z.className = 'zone me' + (cur === myIdx && !over ? ' now' : '');
     z.innerHTML = '';
     z.appendChild(buildZoneInner(me, false));
 
@@ -193,8 +313,9 @@
     p.hand.forEach(function (c) {
       var d = el('div', 'mini' + (c.isSpecial ? ' sp' : ''));
       d.innerHTML = '<b>' + esc(c.name) + '</b><span class="y">' + (c.year || '') + ' · ' + esc((c.type || '').split('-')[0]) + '</span>';
-      d.title = '《' + c.name + '》' + c.year + '　' + (c.type || '');
+      d.title = '《' + c.name + '》' + c.year + '　' + (c.type || '') + '　（右键 / 长按看解析）';
       d.addEventListener('click', function () { openCard(c, g.preview(c.id, p.idx)); });
+      bindArchive(d, c, function () { return g.preview(c.id, p.idx); });
       hand.appendChild(d);
     });
     frag.appendChild(hand);
@@ -230,7 +351,10 @@
         n: '通史', v: eraN, t: cfg2.eraTarget, bar: eraBar, done: pg.eras.ok,
         sub: '双' + dbl + '/' + needDbl + '·跨' + grp + '/' + needGrp
       },
-      { n: '立派', v: pg.schools.now, t: cfg2.schoolTarget, bar: pg.schools.now / cfg2.schoolTarget },
+      {
+        n: '立派', v: pg.schools.now, t: cfg2.schoolTarget, bar: pg.schools.now / cfg2.schoolTarget,
+        done: pg.schools.ok, sub: cfg2.schoolMinCards ? '谱≥' + cfg2.schoolMinCards : ''
+      },
       {
         n: '成题', v: tTopN, t: cfg2.themeSize, bar: themeBar,
         done: pg.themes.now >= pg.themes.target, sub: '跨' + tEras + '/' + cfg2.themeEras + '代', tip: tTop
@@ -306,6 +430,7 @@
 
       d.addEventListener('mouseenter', function () { showHint(c, pv); });
       d.addEventListener('click', function () {
+        if (justLongPressed(d)) return;
         if (!can) {
           toast(g.state.over ? '对局已结束'
             : (App.busy ? '稍候'
@@ -315,7 +440,7 @@
         }
         doPlace(id, d);
       });
-      d.addEventListener('contextmenu', function (e) { e.preventDefault(); openCard(c, pv); });
+      bindArchive(d, c, function () { return pv; });
       wrap.appendChild(d);
     });
   }
@@ -338,39 +463,53 @@
   function renderTimeline() {
     var g = App.game, wrap = $('#timeline');
     var eras = App.data.meta.eras || [];
+    var p = g.state.players[App.myIdx];
+    var cfg = g.config;
+    var needDouble = cfg.eraDoubleSegs || 0;
+    var needGroups = cfg.eraMinGroups || 3;
+    var themeSet = {};
+    var doubles = 0, eraCount = 0;
+
     wrap.innerHTML = '';
     eras.forEach(function (e, i) {
-      var mine = [], rivals = [];
-      g.state.players.forEach(function (p) {
-        var list = p.hand.filter(function (c) { return c.era === i; });
-        if (p.idx === 0) mine = list; else rivals = rivals.concat(list);
+      var mine = p.hand.filter(function (c) { return c.era === i; });
+      var themes = [];
+      mine.forEach(function (c) {
+        var t = c.typeGroup || '未分类';
+        themeSet[t] = 1;
+        if (themes.indexOf(t) < 0) themes.push(t);
       });
-      var cls = 'era';
-      if (mine.length) cls += ' has-me';
-      else if (rivals.length) cls += ' has-ai';
+      if (mine.length) eraCount++;
+      if (mine.length >= 2) doubles++;
 
-      var slots = '';
-      mine.slice(0, 1).forEach(function (c) { slots += '<span class="slot me">' + esc(c.name) + '</span>'; });
-      if (mine.length > 1) slots += '<span class="era-more">你 +' + (mine.length - 1) + '</span>';
-      rivals.slice(0, 1).forEach(function (c) { slots += '<span class="slot ai">' + esc(c.name) + '</span>'; });
-      if (rivals.length > 1) slots += '<span class="era-more">他 +' + (rivals.length - 1) + '</span>';
-      if (!slots) slots = '<span class="era-more">—</span>';
+      var cls = 'era' + (mine.length ? ' has-me' : '') + (mine.length >= 2 ? ' double' : '');
+      var chips = themes.length
+        ? themes.map(function (t) { return '<i>' + esc(t) + '</i>'; }).join('')
+        : '<span class="era-empty">—</span>';
 
-      wrap.appendChild(el('div', cls,
-        '<div class="era-name">' + e.label + '</div>' +
+      var cell = el('div', cls,
+        '<div class="era-name">' + e.label +
+          '<b class="era-count" title="这一年代你收了几张">' + mine.length + '</b></div>' +
         '<div class="era-years">' + e.from + '–' + e.to + '</div>' +
-        '<div class="era-slots">' + slots + '</div>'));
+        '<div class="era-themes">' + chips + '</div>');
+      wrap.appendChild(cell);
     });
+
+    var note = $('#era-note');
+    if (note) {
+      note.textContent = '已收 ' + eraCount + '/' + eras.length + ' 段 · 双收 ' +
+        doubles + '/' + needDouble + ' · 主题 ' + Object.keys(themeSet).length + '/' + needGroups;
+    }
   }
 
   /** 侧栏：自己谱中的班底（词/曲）与主题分布——用来记住「还差谁」 */
   function renderSide() {
     var g = App.game, wrap = $('#side-me');
     if (!wrap) return;
-    var p = g.state.players[0];
+    var p = g.state.players[App.myIdx];
     var cfg = g.config;
 
-    // --- 班底：与立派同口径，只算作词 / 作曲
+    // --- 班底：与立派同口径，只算词人 / 曲师
     var cnt = {};
     p.hand.forEach(function (c) {
       ['lyricist', 'composer'].forEach(function (k) {
@@ -432,6 +571,7 @@
       floatFame('+' + (g.state.players[who].fame - before), rect.left + rect.width / 2 - 10, rect.top + 8);
     }
     renderAll();
+    tutNotify('place');
     if (g.state.over) { finish(); return; }
     g.endTurn();
     renderAll();
@@ -443,6 +583,7 @@
     if (!isHumanTurn()) return;
     g.gather(g.state.current);
     renderAll();
+    tutNotify('gather');
     if (g.state.over) { finish(); return; }
     g.endTurn();
     renderAll();
@@ -452,8 +593,9 @@
   /** 连续推进所有 AI 玩家，直到轮到人类或对局结束 */
   function pumpAI() {
     var g = App.game;
+    if (App.paused) return;
     if (g.state.over) { finish(); return; }
-    if (g.state.current === 0 || !g.state.players[g.state.current].isAI) { renderAll(); return; }
+    if (!g.state.players[g.state.current].isAI) { renderAll(); return; }
 
     App.busy = true;
     renderAll();
@@ -478,10 +620,12 @@
   /* ---------------- 结算 ---------------- */
   function finish() {
     var g = App.game;
+    if (App.paused) { App.pendingEnd = true; return; }
     var winner = g.state.winner;
     var winP = g.state.players[winner];
-    var me = g.state.players[0];
-    var iWin = winner === 0;
+    var my = App.myIdx;
+    var me = g.state.players[my];
+    var iWin = winner === my;
     var byLabel = { fame: '声名', schools: '立派', eras: '通史', themes: '成题', timeout: '总进度' }[g.state.winBy] || '';
 
     $('#end-title').textContent = iWin ? '谱 成' : '谱 未 成';
@@ -493,7 +637,8 @@
     me.hand.forEach(function (c) {
       var d = el('div', 'mini' + (c.isSpecial ? ' sp' : ''));
       d.innerHTML = '<b>' + esc(c.name) + '</b><span class="y">' + c.year + ' · ' + esc((c.type || '').split('-')[0]) + '</span>';
-      d.addEventListener('click', function () { openCard(c, g.preview(c.id, 0)); });
+      d.addEventListener('click', function () { openCard(c, g.preview(c.id, App.myIdx)); });
+      bindArchive(d, c, function () { return g.preview(c.id, App.myIdx); });
       hw.appendChild(d);
     });
 
@@ -501,7 +646,7 @@
       var cfg = g.config;
       var rows = g.state.players.map(function (p) {
         var pg = E.progress(p, cfg);
-        var out = { name: p.name, me: p.idx === 0, v: 0, bar: 0, done: false, sub: '' };
+        var out = { name: p.name, me: p.idx === App.myIdx, v: 0, bar: 0, done: false, sub: '' };
         if (key === 'fame') {
           out.v = pg.fame.now; out.bar = pg.fame.now / target; out.done = out.v >= target;
         } else if (key === 'eras') {
@@ -559,11 +704,11 @@
   }
 
   function exportList() {
-    var g = App.game, me = g.state.players[0];
+    var g = App.game, me = g.state.players[App.myIdx];
     var L = [];
     L.push('《三百首·词宗》辑录');
     L.push('生成：' + new Date().toLocaleString('zh-CN'));
-    L.push('结果：' + (g.state.winner === 0 ? '胜' : '负（' + g.state.players[g.state.winner].name + ' 胜）') +
+    L.push('结果：' + (g.state.winner === App.myIdx ? '胜' : '负（' + g.state.players[g.state.winner].name + ' 胜）') +
       '　声名 ' + me.fame + '　第 ' + g.state.round + ' 轮');
     L.push('');
     me.hand.forEach(function (c, i) {
@@ -625,8 +770,8 @@
       '<div class="cd-name">' + esc(c.name) + '</div>' +
       '<div class="cd-sub">' + (c.date || c.year) + '　' + esc(c.type || '') + '</div>' +
       '<div class="cd-rows">' +
-        row('作词', esc(join(c.lyricist))) +
-        row('作曲', esc(join(c.composer))) +
+        row('词人', esc(join(c.lyricist))) +
+        row('曲师', esc(join(c.composer))) +
         row('编曲', esc(join(c.arranger))) +
         row('演唱', esc(join(c.singer))) +
         row('调校', esc(join(c.tuner))) +
@@ -667,12 +812,20 @@
         var c = App.data.cards.filter(function (x) { return x.id === d.dataset.id; })[0];
         if (c) openCard(c, App.game ? App.game.preview(c.id, App.game.state.current) : null);
       });
+      var lc = App.data.cards.filter(function (x) { return x.id === d.dataset.id; })[0];
+      if (lc) bindArchive(d, lc, function () { return App.game ? App.game.preview(lc.id, App.game.state.current) : null; });
     });
   }
 
   /* ---------------- 模态 ---------------- */
-  function openModal(id) { $('#' + id).classList.add('open'); }
-  function closeModal(n) { n.classList.remove('open'); }
+  function openModal(id) {
+    $('#' + id).classList.add('open');
+    if (tut.on && tut.layer) tut.layer.style.display = 'none';
+  }
+  function closeModal(n) {
+    n.classList.remove('open');
+    if (tut.on && tut.layer) { tut.layer.style.display = ''; requestAnimationFrame(tutPos); }
+  }
   function bindModals() {
     $$('.modal').forEach(function (m) {
       m.addEventListener('click', function (e) { if (e.target === m) closeModal(m); });
@@ -701,17 +854,31 @@
         '<tr><td><b>辑录</b></td><td>从歌肆挑一张歌，放进自己的谱</td><td>付墨；谱不限张数</td></tr>',
         '<tr><td><b>采风</b></td><td>直接得墨，并换掉歌肆最左一张</td><td>这一轮不收歌</td></tr>',
       '</table>',
-      '<p>每轮开始自动得 ' + c.income + ' 墨（三人、四人局为 3），上限 ' + c.inkCap + '。墨不够就只能采风。</p>',
+      '<p>每轮开始自动得墨：二人 2、三人 3、四人 4。<b>墨不设上限</b>，攒着等一张好牌是允许的。墨不够就只能采风。</p>',
 
       '<h3>② 四条终点线（达成任意一条即胜）</h3>',
       '<table>',
-        '<tr><th>线</th><th>条件（以二人局为例）</th><th>怎么打</th></tr>',
-        '<tr><td><b>声名</b></td><td>累计声名 ≥ ' + b2.fame + '</td><td>挑高价值的牌，稳扎稳打</td></tr>',
-        '<tr><td><b>通史</b></td><td>六个年代各至少 1 张，其中 ' + b2.doubles + ' 段各有 2 张，且跨 ' + b2.groups + ' 个主题</td><td>铺开，抢年代空位</td></tr>',
-        '<tr><td><b>立派</b></td><td>立 ' + b2.schools + ' 派：同一位词人或曲人每 2 首算 1 派</td><td>死磕同一位创作者</td></tr>',
-        '<tr><td><b>成题</b></td><td>同一主题 ' + b2.themeSize + ' 首，且跨 ' + b2.themeEras + ' 个年代</td><td>横向收束，一类到底</td></tr>',
+        '<tr><th>线</th><th>条件（二人 / 三人 / 四人）</th><th>怎么打</th></tr>',
+        '<tr><td><b>声名</b></td><td>累计声名 ≥ <b>' + b2.fame + ' / ' + b3.fame + ' / ' + b4.fame + '</b></td><td>挑高声名的牌，稳扎稳打</td></tr>',
+        '<tr><td><b>通史</b></td><td>六个年代各至少 1 张，其中 <b>' + b2.doubles + '</b> 段各有 2 张；' +
+          '<b>全谱</b>共跨 <b>' + b2.groups + ' / ' + b3.groups + ' / ' + b4.groups +
+          '</b> 个主题（不是只看那 4 段）</td><td>按年代铺开，抢年代空位</td></tr>',
+        '<tr><td><b>立派</b></td><td>立 <b>' + b2.schools + ' / ' + b3.schools + ' / ' + b4.schools +
+          '</b> 派：同一位词人或曲师每 2 首算 1 派</td><td>死磕同几位创作者</td></tr>',
+        '<tr><td><b>成题</b></td><td>同一主题 <b>' + b2.themeSize + ' / ' + b3.themeSize + ' / ' + b4.themeSize +
+          '</b> 首，且跨 <b>' + b2.themeEras + ' / ' + b3.themeEras + ' / ' + b4.themeEras + '</b> 个年代</td><td>按主题横向收束，一类到底</td></tr>',
       '</table>',
-      '<p>人多时门槛会变：三人 → 声名 ' + b3.fame + '、成题跨 ' + b3.themeEras + ' 代；四人 → 声名 ' + b4.fame + '、通史只跨 ' + b4.groups + ' 个主题、成题跨 ' + b4.themeEras + ' 代。</p>',
+      '<p style="font-size:11.5px;color:var(--ink-3)">表里的三档依次对应二人、三人、四人局。</p>',
+
+      '<p><b>立派按「每两首」算。</b>同一位创作者在你谱里有 2 首＝1 派，有 4 首＝2 派。只算词人、曲师两类角色，同一张牌可以同时算进两派。' +
+        '<br>例：河图 2 首（1 派）、Finale 4 首（2 派）、银临 2 首（1 派）——合计 4 派。' +
+        '<br><b>二人局</b>还要求谱中至少 11 首；若某位创作者已有 3 首，可免这一条。</p>',
+      '<div class="note">' +
+        '<b>跨角色也算。</b>甲是 A 的歌的词人，又是 B 的歌的曲师——A 与 B 合起来可以算甲的一派。<br>' +
+        '<b>但同一首歌里词、曲都是甲，只算一张</b>，不能自己跟自己成组。' +
+      '</div>',
+      '<p><b>成题要跨年代。</b>同一主题收满 ' + b2.themeSize + ' 首还不够，这些歌必须来自 ' + b2.themeEras +
+        ' 个不同年代。它和「通史」正好相反：通史要铺满六个年代，成题要一类到底。</p>',
 
       '<h3>③ 一张牌要多少墨</h3>',
       '<table>',
@@ -730,41 +897,17 @@
         '<tr><td>开段</td><td>+' + c.fameEraFirst + '（该年代你第一次落子）</td></tr>',
         '<tr><td>同流成对</td><td>+' + c.famePair + '（该主题在谱中凑满 2、4、6 张时）</td></tr>',
       '</table>',
-
-      '<h3>⑤ 立派与成题，两点容易搞错</h3>',
-      '<p><b>立派按「每两首」算。</b>同一位创作者在你谱里有 2 首＝1 派，有 4 首＝2 派。只算作词、作曲两类角色；同一张牌可以同时算进两派。</p>',
-      '<div class="note">例：河图 2 首（1 派）、Finale 4 首（2 派）、银临 2 首（1 派）——合计 4 派。</div>',
-      '<p><b>成题要跨年代。</b>同一主题收满 ' + b2.themeSize + ' 首还不够，这些歌必须来自 ' + b2.themeEras + ' 个不同年代。它和「通史」正好相反：通史要四类都有、年代不重；成题要一类到底、年代不重。</p>',
-
-      '<h3>⑥ 开局怎么设</h3>',
-      '<table>',
-        '<tr><th>设置</th><th>说明</th></tr>',
-        '<tr><td><b>玩法</b></td><td>两枚圆钮：詞宗（本局）／詞路（棋盘局）</td></tr>',
-        '<tr><td><b>人数</b></td><td>2–4 人；座位右侧可切「人／机」</td></tr>',
-        '<tr><td><b>先后</b></td><td>我先手 / 我后手。补偿按出手位次发：先手 ' + c.startInk + ' 墨 0 声名，每往后一位多 ' + c.secondBonus + ' 墨、' + c.seatFameTable[1] + ' 声名</td></tr>',
-        '<tr><td><b>难度</b></td><td>只影响墨客：初涉＝一半最优、一半明显犯蠢；熟手＝一半最优一半次优；老吏＝每手最优</td></tr>',
-      '</table>',
-      '<p>留两个以上「人」即同屏轮流（热座）：上方是你以外的座位，下方固定第一位玩家，轮到谁谁的名字旁出现「此刻」。</p>',
-
-      '<h3>⑦ 界面上看什么</h3>',
-      '<ul>',
-        '<li><b>歌肆</b>：公共牌列，你拿走别人就没有。悬停看这张牌此刻的费用与声名。</li>',
-        '<li><b>编年轴</b>：六个年代各收了几张，一眼看出通史还缺哪段。</li>',
-        '<li><b>右侧栏</b>：班底（词／曲各几首，够 2 首标朱）与主题（四类各几首、跨几代）——不用自己记「还差谁」。</li>',
-        '<li><b>四条进度条</b>：通史写成「双 2/4·跨 3/3」，是为了提醒它不只看段数。</li>',
-        '<li><b>右键卡牌</b>：看完整档案，包括每条笺注的出处链接。</li>',
-      '</ul>'
+      '<p class="note">第一次玩，直接点首页的<b>新手教程</b>：从选人数、认牌、收第一张牌，到看四条进度条，一步步带你走完。</p>'
     ].join('');
   }
 
   /* ---------------- 棋盘局规则 ---------------- */
   function renderBoardRules() {
     var B = window.SBBoard.BOARD;
-    var BAL = window.SBBoard.BALANCE;
 
     $('#rule-body').innerHTML = [
       '<div class="rule-lead">',
-        '<b>一句话：</b>掷骰走 49 格，落地翻牌、收歌占地；声名先到 ' + B.fameTarget + '，或走满卷数后声名最高者胜。',
+        '<b>一句话：</b>掷骰走 49 格，落地翻牌、收歌占地；声名先到 <b>' + B.fameTarget + '</b> 者胜。',
       '</div>',
 
       '<h3>① 一回合，掷骰或采风</h3>',
@@ -778,45 +921,33 @@
       '<h3>② 会落在哪些格</h3>',
       '<table>',
         '<tr><th>格</th><th>效果</th></tr>',
-        '<tr><td><b>歌格</b>（每段前 7 格）</td><td>翻开后若无人占，可付墨收下；费用与声名算法和第一局相同</td></tr>',
+        '<tr><td><b>歌格</b></td><td>翻开后若无人占，可付墨收下；费用与声名算法与《词宗》相同</td></tr>',
         '<tr><td><b>开卷格 / 段首</b></td><td>落地 +' + B.startBonus + ' ／ +1 声名</td></tr>',
         '<tr><td><b>机会格</b>（第 1、3、5 段末）</td><td>抽一张：得墨、加声名、前进 2–3 格、下一张免墨</td></tr>',
         '<tr><td><b>命运格</b>（第 2、4、6 段末）</td><td>抽一张：失墨、减声名、后退、停一手，也夹着几张吉牌</td></tr>',
       '</table>',
       '<p>开局全部扣着（问号 + 斜纹），走到才翻开。格子右上角是整条路径的编号 1–49，跟着编号走就是一条龙。</p>',
 
-      '<h3>③ 占地与过路费</h3>',
+      '<h3>③ 成组：三个维度各自算</h3>',
+      '<table>',
+        '<tr><th>维度</th><th>怎么算</th></tr>',
+        '<tr><td>年代段</td><td>同一「年代段」里占了几格</td></tr>',
+        '<tr><td>主题</td><td>史同／架空／人生／文化，同一类占了几格</td></tr>',
+        '<tr><td>班底</td><td>同一位词人或曲师，占了几格</td></tr>',
+      '</table>',
+      '<p>任一维度占满 ' + B.groupSize + ' 格即成一组：立刻 <b>+' + B.groupBonus + ' 声名</b>，且该组的过路费按满额收。右侧<b>成组看板</b>会把三个维度各占几格摊开，成组的标朱。</p>',
+      '<div class="note"><b>班底怎么算：</b>只算词人、曲师两类角色。' +
+        '甲是 A 的歌的词人、又是 B 的歌的曲师——A 与 B 合起来可以算甲的班底；' +
+        '但如果同一首歌里词、曲都是甲，这一首只算一格，不能自己跟自己凑成组。</div>',
+
+      '<h3>④ 占地与过路费</h3>',
       '<p>你收下的格子会留朱框和名字，别人再踩到就要付墨给你：</p>',
       '<table>',
         '<tr><td>基本</td><td>按这首歌在你手上所属的<b>最大一组</b>收：组里 1 格 1 墨、2 格 2 墨、3 格 3 墨</td></tr>',
-        '<tr><td>按圈递增</td><td><b>第二圈起每多一圈 +1 墨</b>（最多 +2）。所以晚圈踩别人地盘更贵</td></tr>',
-        '<tr><td>付不起</td><td>空手而过，<b>声名 −2</b>；若声名因此归零，<b>谱全失、占地释放、退回开卷格重来</b></td></tr>',
+        '<tr><td>重修</td><td>你<b>再走一圈又踩回自己已占的格子</b>，这一格的过路费永久 +1（最多 +2）。不是你走第几圈全局加价，而是哪一格被你重修过，哪一格才加</td></tr>',
+        '<tr><td>付不起</td><td>空手而过，<b>声名 −' + B.debtPenalty + '</b>；若声名因此归零，<b>谱全失、占地释放、退回开卷格重来</b></td></tr>',
       '</table>',
-      '<div class="note">格子右下「N 墨」就是这一脚要付的钱，会随圈数自动变大。</div>',
-
-      '<h3>④ 成组：三个维度各自算</h3>',
-      '<table>',
-        '<tr><th>维度</th><th>怎么算</th></tr>',
-        '<tr><td>年代</td><td>同一段里占了几格</td></tr>',
-        '<tr><td>主题</td><td>史同／架空／人生／文化，同一类占了几格</td></tr>',
-        '<tr><td>班底</td><td>同一位词人或曲人，占了几格</td></tr>',
-      '</table>',
-      '<p>任一维度占满 ' + B.groupSize + ' 格即成一组：立刻 <b>+' + B.groupBonus + ' 声名</b>，且该组的过路费按满额收。右侧<b>成组看板</b>会把三个维度各占几格摊开，成组的标朱。</p>',
-
-      '<h3>⑤ 输赢</h3>',
-      '<p>声名先到 <b>' + B.fameTarget + '</b>，或走满卷数后声名最高。卷数按人数：' +
-        [2, 3, 4].map(function (n) { return n + ' 人 ' + BAL[n].laps + ' 卷'; }).join('；') +
-        '。<br>目标定在「走完这些圈大概能攒到的声名」，所以多数对局都能走满两圈，只有跑得特别快的一家会提前收局。</p>',
-
-      '<h3>⑥ 与第一局的差别</h3>',
-      '<table>',
-        '<tr><th></th><th>詞宗（第一局）</th><th>詞路（第二局）</th></tr>',
-        '<tr><td>选牌</td><td>从 5–7 张歌肆里挑</td><td>只能拿脚下翻到的那一张</td></tr>',
-        '<tr><td>互动</td><td>抢同一张牌</td><td>踩别人的地盘要付墨</td></tr>',
-        '<tr><td>节奏</td><td>约 11 轮</td><td>两圈上下</td></tr>',
-        '<tr><td>策略</td><td>规划四条线</td><td>随遇而安，把手上这副牌用好</td></tr>',
-      '</table>',
-      '<p>界面：顶部是各家的声名／墨／谱／卷；棋盘右侧是成组看板；底部掷骰与采风并排，下面一行是记录。<b>每行默认 7 格</b>，手机／平板可在图例右侧切成 4–6 格，选择会记住。</p>'
+      '<div class="note">格子右下的「N 墨」就是这一脚要付的钱。被主人重修过的格子，数字会自己变大。</div>'
     ].join('');
   }
 
@@ -836,37 +967,8 @@
       '</div>',
       '<p style="font-size:11.5px;color:var(--ink-3)">数据版本：' + (meta.generatedAt || '未知') +
       '　来源：' + (meta.source || '飞书多维表格') + (App.usingOverride ? '　<b style="color:var(--seal)">（当前使用本地导入版）</b>' : '') + '</p>',
-
-      '<h3>飞书表更新之后怎么办</h3>',
-      '<p>牌库由飞书两张表生成，表 ID 配在项目根的 <code>feishu.json</code>（已在 .gitignore 里，不进仓库）。表里加歌、补解析、改字段之后，按下面任一种方式刷新牌库，<b>不需要改任何游戏代码</b>。</p>',
-      '<p><b>方式一（推荐）</b>：双击 <code>更新数据.bat</code>。脚本现拉飞书两张表，重建 <code>data/cards.json</code> 与 <code>data/cards.js</code>，并打印统计报告。</p>',
-      '<p><b>方式二</b>：手动导出两张表为 NDJSON，然后运行：</p>',
-      '<pre>python tools\\update.py --songs 三百首.ndjson --parses 解析.ndjson</pre>',
-      '<p><b>方式三</b>：只拿到一份 <code>cards.json</code> 时，直接在这里导入，浏览器会记在本地（不改动磁盘文件）。</p>',
-      '<div class="imp"><input type="file" id="imp-file" accept=".json,application/json"><button class="nav sm" id="imp-clear">清除导入</button></div>',
-      '<p style="font-size:11.5px;color:var(--ink-3)">字段容错：构建脚本对列名做了别名映射，飞书里把「解析（请到解析模块查看）」改成「解析／解析数／解析有无」这类改动不会让脚本失效；新增的未识别列会原样保留在每张牌的 <code>extra</code> 字段里，供以后扩展玩法。</p>'
+      '<p class="note" style="font-size:12px">牌库更新：双击项目根目录的 <code>更新数据.bat</code> 即可重建。详细步骤见 <code>说明.md</code>。</p>'
     ].join('');
-
-    var fi = $('#imp-file');
-    if (fi) fi.addEventListener('change', function () {
-      var f = fi.files && fi.files[0]; if (!f) return;
-      var fr = new FileReader();
-      fr.onload = function () {
-        try {
-          var j = JSON.parse(fr.result);
-          if (!j.cards || !Array.isArray(j.cards) || !j.cards.length) throw new Error('缺少 cards 数组');
-          localStorage.setItem('sb_cards_override', JSON.stringify(j));
-          toast('已导入 ' + j.cards.length + ' 首，正在重载…');
-          setTimeout(function () { location.reload(); }, 700);
-        } catch (e) { toast('导入失败：' + e.message, 3000); }
-      };
-      fr.readAsText(f, 'utf-8');
-    });
-    var cl = $('#imp-clear');
-    if (cl) cl.addEventListener('click', function () {
-      localStorage.removeItem('sb_cards_override');
-      toast('已清除，正在重载…'); setTimeout(function () { location.reload(); }, 600);
-    });
   }
 
   /* ---------------- 视图 ---------------- */
@@ -877,40 +979,110 @@
   }
 
   function startGame() {
-    var roster = App.seats.slice(0, App.count).map(function (s, i) {
-      return { name: s.name || (i === 0 ? '你' : '墨客'), isAI: i === 0 ? false : !!s.isAI };
-    });
-
-    // 后手：让下一个座位先动，补偿按出手位次自动发给后手
-    var firstSeat = App.humanFirst ? 0 : 1;
-
-    if (App.mode === 'board') {
-      showView('board');
-      window.SBBoard.cfg.difficulty = App.difficulty;
-      // 默认 7 列；只认用户手选过的值（窄屏可自己在图例右侧切 4–6）
-      var savedCols = null;
-      try { savedCols = localStorage.getItem('sb_board_cols'); } catch (e) {}
-      window.SBBoard.BOARD.cols = savedCols ? Math.max(4, Math.min(7, +savedCols)) : 7;
-      window.SBBoard.start(roster, { firstSeat: firstSeat });
-      toast('掷骰前进，落地翻牌；走满 ' + window.SBBoard.BOARD.laps + ' 卷，或以声名先达 ' + window.SBBoard.BOARD.fameTarget + ' 者胜。缺墨可采风。', 3600);
+    if (tut.on && tut.phase === 'intro') {
+      if (tut.flow === 'board') tutStartBoardGame(); else tutStartGame();
       return;
     }
-
-    var cards = App.data.cards;
-    App.game = new E.Game(cards, {
-      eraCount: (App.data.meta.eras || []).length || 6,
-      players: roster,
-      firstSeat: firstSeat
+    var roster = App.seats.slice(0, App.count).map(function (s, i) {
+      return { name: s.name || (i === 0 ? '你' : '墨客'), isAI: !!s.isAI, isMe: !!s.isMe };
     });
-    App.busy = false;
-    showView('game');
-    renderAll();
+
+    if (App.mode === 'board') { launchBoard(roster, {}); return; }
+
+    launchDeck(roster, {});
     if (roster.filter(function (r) { return r.isAI; }).length) {
-      toast('点歌肆里的一张牌辑录；付不起就点「采风」。', 3200);
+      toast('点歌肆里的一张牌辑录；付不起就点「采风」。右键或长按卡牌可读解析。', 3400);
     } else {
       toast('热座局：轮到谁，谁的名字旁会出现「此刻」。', 3200);
     }
+  }
+
+  /** 开局（词路）。tutorial=true 时用固定骰序与熟歌，并弹出引导。 */
+  function launchBoard(roster, opts) {
+    opts = opts || {};
+    App.lastMode = 'board';
+    App.paused = false;
+    showView('board');
+    window.SBBoard.cfg.difficulty = App.difficulty;
+    // 默认 7 列；只认用户手选过的值（窄屏可自己在图例右侧切 4–6）
+    var savedCols = null;
+    try { savedCols = localStorage.getItem('sb_board_cols'); } catch (e) {}
+    window.SBBoard.BOARD.cols = savedCols ? Math.max(4, Math.min(7, +savedCols)) : 7;
+    window.SBBoard.start(roster, { firstSeat: 0, tutorial: !!opts.tutorial });
+    if (opts.tutorial && !opts.manual) setTimeout(function () { tutBoardFlow(); tutShow(3); }, 520);
+    if (!opts.tutorial && !opts.manual) {
+      toast('轮到你时点「掷骰」行棋；缺墨可「采风」换 4 墨。声名先到 ' +
+        window.SBBoard.BOARD.fameTarget + ' 者胜。', 3600);
+    }
+  }
+
+  /** 开局（词宗）。tutorial 传入固定种子与两人阵容，走教程流程。 */
+  function launchDeck(roster, opts) {
+    opts = opts || {};
+    App.myIdx = Math.max(0, roster.map(function (r) { return !!r.isMe; }).indexOf(true));
+    App.game = new E.Game(App.data.cards, {
+      eraCount: (App.data.meta.eras || []).length || 6,
+      players: roster,
+      seed: opts.seed
+    });
+    App.busy = false;
+    App.paused = false;
+    App.pendingEnd = false;
+    App.lastMode = 'deck';
+    showView('game');
+    renderAll();
     pumpAI();
+  }
+
+  /** 返回首页：只在对局稳定时允许（AI 思考 / 棋子在走时先拦一下） */
+  function returnHome(which) {
+    if (which === 'board') {
+      var BS = window.SBBoard && window.SBBoard.S;
+      if (BS && BS.players.length && !BS.over) {
+        if (BS.phase !== 'idle') { toast('等这一手走完再返回'); return; }
+        window.SBBoard.pause();
+      }
+    } else if (App.game && !App.game.state.over) {
+      if (App.busy) { toast('等这一手走完再返回'); return; }
+      App.paused = true;
+    }
+    App.paused = true;
+    App.lastMode = which;
+    showView('intro');
+    renderIntro();
+  }
+
+  function continueGame() {
+    if (App.lastMode === 'board' && window.SBBoard.S.players.length && !window.SBBoard.S.over) {
+      showView('board');
+      window.SBBoard.resume();
+      return;
+    }
+    if (App.game && !App.game.state.over) {
+      App.paused = false;
+      showView('game');
+      renderAll();
+      if (App.pendingEnd) { App.pendingEnd = false; finish(); return; }
+      pumpAI();
+    }
+  }
+
+  function updateResume() {
+    var bar = $('#resume-bar');
+    if (!bar) return;
+    var deckLive = App.game && !App.game.state.over;
+    var boardLive = window.SBBoard && window.SBBoard.S.players.length && !window.SBBoard.S.over;
+    if (!deckLive && !boardLive) { bar.hidden = true; return; }
+    var mode = App.lastMode;
+    if (mode === 'board' && !boardLive) mode = deckLive ? 'deck' : 'board';
+    if (mode === 'deck' && !deckLive) mode = boardLive ? 'board' : 'deck';
+    App.lastMode = mode;
+    var name = mode === 'board'
+      ? '词路 · 已行 ' + window.SBBoard.S.turns + ' 手'
+      : '词宗 · 第 ' + App.game.state.round + ' 轮';
+    bar.hidden = false;
+    var n = $('#resume-name');
+    if (n) n.textContent = name;
   }
 
   /* ---------------- 绑定 ---------------- */
@@ -932,19 +1104,10 @@
         });
         b.classList.add('on'); b.setAttribute('aria-pressed', 'true');
         App.mode = b.dataset.mode;
-        var hint = $('.setup-hint');
-        if (hint) hint.textContent = App.mode === 'board'
-          ? '棋盘局：掷骰前行，落在格子翻开，落在歌格可辑录占地；声名先达 48 或走满两卷者胜。'
-          : '点座位右侧的「人 / 机」切换。留两个以上「人」即同屏轮流（热座）。';
-      });
-    });
-
-    // 先后手
-    $$('#seg-first button').forEach(function (b) {
-      b.addEventListener('click', function () {
-        $$('#seg-first button').forEach(function (x) { x.classList.remove('on'); });
-        b.classList.add('on');
-        App.humanFirst = b.dataset.first === '1';
+        var sub = $('#tut-sub');
+        if (sub) sub.textContent = App.mode === 'board'
+          ? '两分钟，带你看懂棋盘、掷骰与成组'
+          : '三分钟，一步步带你走完一回合';
       });
     });
 
@@ -957,6 +1120,15 @@
     });
 
     $('#btn-start').addEventListener('click', startGame);
+    var bt = $('#btn-tutorial');
+    if (bt) bt.addEventListener('click', function () {
+      if (App.game && !App.game.state.over) { App.paused = true; App.lastMode = 'deck'; }
+      var BS = window.SBBoard && window.SBBoard.S;
+      if (BS && BS.players.length && !BS.over) { window.SBBoard.pause(); }
+      showView('intro');
+      renderIntro();
+      startTutorial();
+    });
     $('#btn-again').addEventListener('click', function () { showView('intro'); renderIntro(); });
     $('#btn-export').addEventListener('click', exportList);
     $('#btn-gather').addEventListener('click', doGather);
@@ -969,9 +1141,21 @@
     });
     var bc = $('#btn-cards-intro'); if (bc) bc.addEventListener('click', openLibrary);
 
-    $('#btn-restart').addEventListener('click', function () {
-      if (App.game && !App.game.state.over && !confirm('放弃当前这局，重开？')) return;
-      showView('intro'); renderIntro();
+    $('#btn-home').addEventListener('click', function () { returnHome('deck'); });
+    var brs = $('#btn-resume');
+    if (brs) brs.addEventListener('click', continueGame);
+    var brn = $('#btn-resume-new');
+    if (brn) brn.addEventListener('click', function () {
+      if (!confirm('重开一局？当前进度会丢失。')) return;
+      App.game = null;
+      if (window.SBBoard) window.SBBoard.reset();
+      App.mode = App.lastMode;
+      $$('#mode-pick .orb').forEach(function (x) {
+        x.classList.toggle('on', x.dataset.mode === App.mode);
+        x.setAttribute('aria-pressed', x.dataset.mode === App.mode ? 'true' : 'false');
+      });
+      App.paused = false; App.pendingEnd = false;
+      startGame();
     });
 
     var ls = $('#lib-search'); if (ls) ls.addEventListener('input', renderLib);
@@ -992,19 +1176,18 @@
       });
     });
     var bk = $('#bp-back');
-    if (bk) bk.addEventListener('click', function () {
-      if (!window.SBBoard.S.over && window.SBBoard.S.players.length && !confirm('离开当前棋局？')) return;
-      showView('intro'); renderIntro();
-    });
+    if (bk) bk.addEventListener('click', function () { returnHome('board'); });
     var br = $('#bp-rules');
     if (br) br.addEventListener('click', function () { renderBoardRules(); openModal('modal-rules'); });
+    var bd = $('#bp-data');
+    if (bd) bd.addEventListener('click', function () { renderDataPanel(); openModal('modal-data'); });
     var ba = $('#bp-again');
     if (ba) ba.addEventListener('click', function () {
       closeModal($('#modal-bp-result'));
       var roster = App.seats.slice(0, App.count).map(function (s, i) {
-        return { name: s.name || (i === 0 ? '你' : '墨客'), isAI: i === 0 ? false : !!s.isAI };
+        return { name: s.name || (i === 0 ? '你' : '墨客'), isAI: !!s.isAI, isMe: !!s.isMe };
       });
-      window.SBBoard.start(roster, { firstSeat: App.humanFirst ? 0 : 1 });
+      window.SBBoard.start(roster, { firstSeat: 0 });
     });
     var bh = $('#bp-home');
     if (bh) bh.addEventListener('click', function () {
@@ -1012,10 +1195,394 @@
     });
   }
 
+  /* ---------------- 新手教程 ----------------
+     一个轻量引导层：四块遮罩挖一个洞，洞套住目标元素，旁边浮一张说明卡。
+     需要「跟着做」的步骤用 wait 挂起，等 doPlace / doGather / 开卷 发事件再前进。 */
+
+  /* 教程局用的牌：按「解析数 + 三平台热度榜」挑的，都是三百首里最熟的几首 */
+  var TUT_CARDS = ['牵丝戏', '赤伶', '悟空', '人间不值得', '不谓侠', '是风动'];
+  var tut = { on: false, i: 0, offset: 0, steps: [], step: null, layer: null, tip: null, ring: null, masks: [], phase: 'idle', flow: null, snap: null, lastTarget: null };
+
+  /* 教程局的「熟歌」排序：榜上排名 − 解析数 × 30（见 js/hot.js） */
+  function tutHotScore(c) {
+    return window.SBHOT ? SBHOT.score(c) : 9999;
+  }
+
+  function tutLayer() {
+    if (tut.layer) return;
+    var layer = el('div', 'tut-layer');
+    ['t', 'b', 'l', 'r'].forEach(function () {
+      layer.appendChild(el('div', 'tut-mask'));
+    });
+    tut.ring = el('div', 'tut-ring');
+    tut.tip = el('div', 'tut-tip');
+    tut.tip.style.left = '-9999px';
+    tut.tip.style.top = '0px';
+    layer.appendChild(tut.ring);
+    layer.appendChild(tut.tip);
+    layer.style.visibility = 'hidden';
+    document.body.appendChild(layer);
+    tut.layer = layer;
+    tut.masks = $$('.tut-mask', layer);
+    window.addEventListener('resize', tutPos);
+    window.addEventListener('scroll', tutPos, true);
+  }
+
+  function tutRemove() {
+    if (tut.layer) tut.layer.remove();
+    if (tut.lastTarget) tut.lastTarget.classList.remove('tut-target');
+    window.removeEventListener('resize', tutPos);
+    window.removeEventListener('scroll', tutPos, true);
+    tut.layer = null; tut.tip = null; tut.ring = null; tut.masks = []; tut.lastTarget = null;
+  }
+
+  function tutPos() {
+    if (!tut.on || !tut.step || !tut.tip) return;
+    var st = tut.step;
+    var target = st.sel ? document.querySelector(st.sel) : null;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var tw = Math.min(336, vw - 28);
+    var pad = st.pad || 7;
+    var r = target ? target.getBoundingClientRect() : null;
+    var tipH = tut.tip.offsetHeight;
+
+    tut.tip.style.width = tw + 'px';
+    var left, top;
+    if (r) {
+      left = Math.max(12, Math.min(vw - tw - 12, r.left + r.width / 2 - tw / 2));
+      if (r.bottom + 14 + tipH < vh - 10) top = r.bottom + 14;
+      else if (r.top - 14 - tipH > 10) top = r.top - 14 - tipH;
+      else top = Math.max(10, vh - tipH - 10);
+    } else {
+      left = (vw - tw) / 2;
+      top = Math.max(10, (vh - tipH) / 2);
+    }
+    tut.tip.style.left = left + 'px';
+    tut.tip.style.top = top + 'px';
+
+    if (!r) {
+      tut.ring.style.display = 'none';
+      setMask(tut.masks[0], 0, 0, vw, vh);
+      setMask(tut.masks[1], 0, 0, 0, 0);
+      setMask(tut.masks[2], 0, 0, 0, 0);
+      setMask(tut.masks[3], 0, 0, 0, 0);
+      return;
+    }
+    tut.ring.style.display = 'block';
+    tut.ring.style.left = (r.left - pad) + 'px';
+    tut.ring.style.top = (r.top - pad) + 'px';
+    tut.ring.style.width = (r.width + pad * 2) + 'px';
+    tut.ring.style.height = (r.height + pad * 2) + 'px';
+
+    var x1 = Math.max(0, r.left - pad), x2 = Math.min(vw, r.right + pad);
+    var y1 = Math.max(0, r.top - pad), y2 = Math.min(vh, r.bottom + pad);
+    setMask(tut.masks[0], 0, 0, vw, y1);
+    setMask(tut.masks[1], 0, y2, vw, Math.max(0, vh - y2));
+    setMask(tut.masks[2], 0, y1, x1, Math.max(0, y2 - y1));
+    setMask(tut.masks[3], x2, y1, Math.max(0, vw - x2), Math.max(0, y2 - y1));
+  }
+
+  function setMask(m, x, y, w, h) {
+    m.style.left = x + 'px'; m.style.top = y + 'px';
+    m.style.width = Math.max(0, w) + 'px'; m.style.height = Math.max(0, h) + 'px';
+  }
+
+  function tutShow(i) {
+    if (!tut.on) return;
+    if (i >= tut.steps.length) { tutEnd(); return; }
+    tut.i = i;
+    tut.step = tut.steps[i];
+    var st = tut.step;
+    if (st.before) st.before();
+
+    var body = typeof st.text === 'function' ? st.text() : st.text;
+    var acts = '';
+    if (st.actions) {
+      acts = st.actions.map(function (a, k) {
+        return '<button class="nav' + (a.primary ? ' primary' : '') + '" data-act="' + k + '">' + a.label + '</button>';
+      }).join('');
+    } else if (st.wait) {
+      acts = '<span class="tp-wait">请在高亮处操作</span>';
+    } else {
+      acts = '<button class="nav primary" id="tut-next">' + (i === tut.steps.length - 1 ? '完 成' : '下一步') + '</button>';
+    }
+
+    tut.tip.innerHTML =
+      '<div class="tp-k">新 手 教 程 · ' + (tut.offset ? (i + tut.offset + 1) + ' / ' + (tut.steps.length + tut.offset) : '第 ' + (i + 1) + ' 步') + '</div>' +
+      '<h4>' + st.title + '</h4>' +
+      '<p>' + body + '</p>' +
+      '<div class="tp-acts' + (st.actions && st.actions.length > 1 ? ' stack' : '') + '">' +
+        (st.actions && st.actions.length > 1 ? '' : '<span class="sp"></span>') + acts +
+        '<button class="skip" id="tut-skip">跳过</button></div>';
+
+    var nx = $('#tut-next');
+    if (nx) nx.addEventListener('click', tutNext);
+    var sk = $('#tut-skip');
+    if (sk) sk.addEventListener('click', function () { tutEnd(true); });
+    $$('[data-act]', tut.tip).forEach(function (b) {
+      b.addEventListener('click', function () { st.actions[+b.dataset.act].fn(); });
+    });
+
+    if (tut.lastTarget) tut.lastTarget.classList.remove('tut-target');
+    var target = st.sel ? document.querySelector(st.sel) : null;
+    tut.lastTarget = target;
+    if (target) {
+      target.classList.add('tut-target');
+      try { target.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) { target.scrollIntoView(); }
+    }
+    requestAnimationFrame(function () {
+      tutPos();
+      if (tut.layer) tut.layer.style.visibility = '';
+    });
+  }
+
+  function tutNext() { tutShow(tut.i + 1); }
+
+  function tutNotify(kind) {
+    if (!tut.on || !tut.step || tut.step.wait !== kind) return;
+    if (kind === 'place' && App.game && App.game.state.lastAction) {
+      var la = App.game.state.lastAction;
+      tut.snap = { cost: la.preview.cost, fame: la.preview.fame, name: la.card.name };
+    }
+    setTimeout(tutNext, kind === 'place' ? 1800 : (kind === 'roll' ? 1300 : 700));
+  }
+  App.tutNotify = tutNotify;
+
+  function tutEnd(skipped) {
+    tut.on = false; tut.phase = 'idle';
+    if (tut.flow === 'board' && window.SBBoard && window.SBBoard.S) {
+      window.SBBoard.S.scripted = [];
+      window.SBBoard.render();
+    }
+    tutRemove();
+    toast(skipped ? '教程已跳过；想再看，点首页「新手教程」。' : '教程到此。点右上角「规则」可随时查条款。', 3000);
+  }
+
+  function setMode(mode) {
+    App.mode = mode;
+    $$('#mode-pick .orb').forEach(function (x) {
+      x.classList.toggle('on', x.dataset.mode === mode);
+      x.setAttribute('aria-pressed', x.dataset.mode === mode ? 'true' : 'false');
+    });
+    var sub = $('#tut-sub');
+    if (sub) sub.textContent = mode === 'board'
+      ? '两分钟，带你看懂棋盘、掷骰与成组'
+      : '三分钟，一步步带你走完一回合';
+  }
+
+  function startTutorial() {
+    if (tut.on) return;
+    tut.on = true; tut.phase = 'intro'; tut.i = 0; tut.offset = 0; tut.flow = null; tut.snap = null;
+    tutLayer();
+    tut.steps = [{
+      sel: '.mode-pick', title: '先学哪一种？',
+      text: '两种打法共用同一副 377 首的牌。<br>选一个，我带你走一遍；教程随时可以再点开，不会只给一次。',
+      actions: [
+        { label: '词宗 · 辑录选牌', primary: true, fn: function () { tutDeckFlow(); } },
+        { label: '词路 · 掷骰行棋', fn: function () { tutBoardFlow(); } }
+      ]
+    }];
+    tutShow(0);
+  }
+
+  function seatStep() {
+    return {
+      sel: '#seats', title: '座位就是出手顺序',
+      text: '从上到下依次出手。按住行首的<b>「⋮⋮」</b>可以直接拖动换位——你想坐哪一位都行，不一定是先手。<br>三人、四人局的后手有墨与声名的补偿，越靠后补得越多。'
+    };
+  }
+  function diffStep() {
+    return {
+      sel: '#seg-difficulty', title: '难度只影响对手',
+      text: '<b>初涉</b>会犯明显的错，<b>熟手</b>偶尔失手，<b>老吏</b>每手都挑最优。教程局固定用初涉。'
+    };
+  }
+
+  /* 词宗分支 */
+  function tutDeckFlow() {
+    setMode('deck');
+    tut.flow = 'deck';
+    tut.offset = 1;
+    tut.steps = [
+      seatStep(),
+      diffStep(),
+      {
+        sel: '#btn-start', title: '点「开卷」开始',
+        text: '教程局固定你先手，只有你和一位初涉墨客，牌序是挑过的：第一张就是《牵丝戏》。<br><b>点上面的「开卷」。</b>',
+        wait: 'start'
+      },
+      {
+        sel: '#market', title: '歌肆：公共牌列',
+        text: '这五张是公共的，你拿走别人就没有。每张牌左下角是<b>墨费</b>，右下角是<b>声名</b>。'
+      },
+      {
+        sel: null, title: '先收一张试试',
+        text: '点高亮的牌，把它收进自己的谱。',
+        before: function () {
+          var g = App.game;
+          if (!g) return;
+          var p = g.state.players[App.myIdx];
+          var best = null;
+          g.state.market.forEach(function (id) {
+            var pv = g.preview(id, App.myIdx);
+            if (pv && pv.cost <= p.ink && (!best || pv.fame > best.pv.fame)) best = { id: id, pv: pv };
+          });
+          if (best) {
+            tut.steps[4].sel = '#market .card[data-id="' + best.id + '"]';
+            tut.steps[4].wait = 'place';
+            tut.steps[4].text = '点高亮的《' + g.card(best.id).name + '》——费 <b>' + best.pv.cost +
+              ' 墨</b>，得 <b>+' + best.pv.fame + ' 声名</b>。';
+          } else {
+            tut.steps[4].sel = '#btn-gather';
+            tut.steps[4].wait = 'gather';
+            tut.steps[4].text = '手上的墨不够收牌，先点下面的<b>「采风」</b>换 4 墨。';
+          }
+        }
+      },
+      {
+        sel: '.zone.me .goals', title: '四条终点线',
+        text: '<b>声名</b>＝挑高声名的牌，稳扎稳打；<b>通史</b>＝按年代铺开，抢年代空位；<b>立派</b>＝死磕同几位创作者；<b>成题</b>＝按主题横向收束，一类到底。<br>任意一条先达成就赢，不用四条都做；具体门槛在右上角「规则」。'
+      },
+      {
+        sel: '.zone.me', title: '这一行是你',
+        text: function () {
+          var sn = tut.snap;
+          if (sn) {
+            return '你花 <b>' + sn.cost + ' 墨</b>收下《' + sn.name + '》，声名 <b>+' +
+              sn.fame + '</b>。墨是当钱用的；声名是四条终点线里的一条。';
+          }
+          return '墨是当钱用的；声名是四条终点线里的一条。谱里的牌会一直留着，四条线都从谱里算。';
+        }
+      },
+      {
+        sel: '#timeline', title: '编年轴：看六个年代',
+        text: '六个年代各收了几张，一眼就能看出「通史」还缺哪一段。你收一张，对应的格子就会亮起来。'
+      },
+      {
+        sel: '#side-me', title: '右栏：班底与主题',
+        text: '这里把<b>班底</b>（词／曲各几首，够 2 首标朱）和<b>主题</b>（四类各几首、跨几代）摊开，不用自己记「还差谁」。'
+      },
+      {
+        sel: '.parse-flag', title: '右键 / 长按，读解析',
+        text: '任何一张牌，<b>右键</b>（手机<b>长按</b>）都能看完整档案：词曲编唱、笺注出处，以及这首歌的解析。<br>牌面右上角有「注」的，就是有解析的。'
+      },
+      {
+        sel: '#btn-gather', title: '墨不够，就采风——点一下试试',
+        text: '得 <b>4 墨</b>，换掉歌肆最左一张；代价是这一轮不能收歌。<br><b>点上面高亮的「采风」。</b>',
+        wait: 'gather'
+      },
+      {
+        sel: null, title: '教程到此',
+        text: '这局可以接着打，也可以重开一局正式对局。教程随时能再点开。',
+        actions: [
+          { label: '继续这局', primary: true, fn: function () { tutEnd(); } },
+          { label: '重开正式局', fn: function () { tutEnd(); App.game = null; startGame(); } }
+        ]
+      }
+    ];
+    tutShow(0);
+  }
+
+  /* 词路分支 */
+  function tutBoardFlow() {
+    setMode('board');
+    tut.flow = 'board';
+    tut.offset = 1;
+    tut.steps = [
+      seatStep(),
+      diffStep(),
+      {
+        sel: '#btn-start', title: '点「开卷」开始',
+        text: '教程局只有你和一位初涉墨客；棋盘每段第一格都换成了熟歌，骰子也先走固定点数。',
+        wait: 'start'
+      },
+      {
+        sel: '#bp-grid', title: '棋盘：49 格一条龙',
+        text: '开卷格 + 6 段 × 8 格 = 49 格，跟着右上角编号走。<br>扣着的格子<b>走到才翻开</b>：歌格可以辑录占地，段末是机会 / 命运。'
+      },
+      {
+        sel: '#bp-roll', title: '轮到你，点这里掷骰',
+        text: '掷骰前进 1–6 格，落地结算。<br><b>上面全暗只是还没走，不是卡住</b>——点这个朱色「掷骰」。',
+        wait: 'roll'
+      },
+      {
+        sel: '#bp-buy', title: '落地之后：点「辑录」',
+        text: '脚下是歌格：点<b>「辑录」</b>，付墨把这张收进谱里，并占住这一格。<br>墨不够或不想收，才点「略过」；翻到机会 / 命运则直接结算。',
+        wait: 'buy'
+      },
+      {
+        sel: '#bp-side', title: '右侧：成组看板',
+        text: '年代段 / 主题 / 班底，任一维度占满 <b>3 格</b>即成一組：立刻 +4 声名，过路费也按满额收。'
+      },
+      {
+        sel: '#bp-gather', title: '缺墨就采风',
+        text: '得 <b>4 墨</b>，这一轮不行棋。手上缺墨时用它换钱。'
+      },
+      {
+        sel: null, title: '开始行棋',
+        text: '落地翻牌、收歌占地；声名先到 <b>120</b> 者胜。<br>踩到别人的格子付不起墨，会掉 5 声名。',
+        actions: [
+          { label: '知道了', primary: true, fn: function () { tutEnd(); } }
+        ]
+      }
+    ];
+    tutShow(0);
+  }
+
+  /** 教程局（词宗）：固定两人、固定种子，歌肆换成挑过的热门牌 */
+  function tutStartGame() {
+    tut.phase = 'game';
+    var roster = [
+      { name: '你', isMe: true, isAI: false },
+      { name: '墨客', isMe: false, isAI: true }
+    ];
+    launchDeck(roster, { seed: 20261102 });
+    var g = App.game;
+    var ids = TUT_CARDS.map(function (n) {
+      var c = App.data.cards.filter(function (x) { return x.name === n; })[0];
+      return c || null;
+    }).filter(Boolean).sort(function (a, b) {
+      return tutHotScore(a) - tutHotScore(b);
+    }).map(function (c) { return c.id; });
+    g.state.piles.forEach(function (pile) {
+      for (var i = pile.length - 1; i >= 0; i--) if (ids.indexOf(pile[i]) >= 0) pile.splice(i, 1);
+    });
+    g.state.market = ids.slice(0, g.marketSize);
+    // 教程局不按年代分堆：所有剩余牌按热度排成一条，补牌永远先出最热的
+    var rest = [];
+    g.state.piles.forEach(function (pile) { rest = rest.concat(pile); });
+    rest = rest.filter(function (id) { return ids.indexOf(id) < 0; });
+    // pop() 取末尾，所以越热越靠后；市场展示时再反过来（最热在左）
+    rest.sort(function (a, b) { return tutHotScore(g.card(b)) - tutHotScore(g.card(a)); });
+    g.state.piles = [rest];
+    g.state.market.sort(function (a, b) { return tutHotScore(g.card(a)) - tutHotScore(g.card(b)); });
+    var rawRefill = g.refill.bind(g);
+    g.refill = function () {
+      rawRefill();
+      g.state.market.sort(function (a, b) { return tutHotScore(g.card(a)) - tutHotScore(g.card(b)); });
+    };
+    g.refill();
+    g.log('教程局：歌肆与后续补牌都按「解析数 + 热度榜」排序。');
+    renderAll();
+    setTimeout(function () { tutShow(3); }, 450);
+  }
+
+  /** 教程局（词路）：固定两人、固定骰序，每段第一格是熟歌 */
+  function tutStartBoardGame() {
+    tut.phase = 'game';
+    var roster = [
+      { name: '你', isMe: true, isAI: false },
+      { name: '墨客', isMe: false, isAI: true }
+    ];
+    launchBoard(roster, { tutorial: true, manual: true });
+    setTimeout(function () { tutShow(3); }, 600);
+  }
+
   function boot() {
     loadData();
     App.openCard = openCard;
     App.showView = showView;
+    App.bindArchive = bindArchive;
     if (!App.data || !App.data.cards) {
       document.body.innerHTML = '<div style="padding:60px">数据未加载：请确认 data/cards.js 存在。</div>';
       return;

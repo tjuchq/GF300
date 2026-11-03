@@ -1,7 +1,7 @@
 /* ===========================================================
-   三百首·词宗 — 第二局：词 路（棋盘）
+   三百首 · 词路（棋盘）
    6 段 × 4 格 = 24 格，掷骰前进，落地辑录。
-   与第一局共用「卡牌价值」体系（知音/同流/已注/开段）。
+   与《词宗》共用同一套「卡牌价值」体系（知音/同流/已注/开段）。
    =========================================================== */
 (function () {
   'use strict';
@@ -12,8 +12,7 @@
   var BOARD = {
     size: 49,
     perEra: 8,          // 每段 8 格（6 段 ×8 + 起点 = 49）
-    laps: 2,            // 走满两圈未分胜负则比声名
-    fameTarget: 48,
+    fameTarget: 120,    // 声名先到 120 即胜（取消「走满几卷」的结束条件）
     startInk: 2,
     income: 1,
     passGain: 3,        // 过起点（成卷）得声名
@@ -22,23 +21,24 @@
     visitFee: 1,        // 踩到别人已辑录的格子，付墨给对方换声名
     groupSize: 3,       // 同一维度占满几格算「成组」
     groupBonus: 4,      // 每成一组的声名奖励
-    maxToll: 3,         // 过路费上限（墨）
-    debtPenalty: 2,     // 墨不足付过路费时，改扣声名
+    maxToll: 3,         // 基础过路费上限（墨）
+    debtPenalty: 5,     // 墨不足付过路费时，改扣声名
     startBonus: 2,      // 踩到起点（开卷格）的声名
     handLimit: 0,       // 棋局中最多能辑录几首；0 = 不限
     cols: 7,            // 每行几格（默认 7，可选 4–7）
-    tollPerLap: 1,      // 第二圈起，每多一圈过路费 +1（最多 +2）
-    tollLapCap: 2
+    tollLapCap: 2,      // 同一格被主人重修的上限（每重修一次 +1 墨）
+    maxTurns: 400       // 只作死循环兜底，正常对局远到不了
   };
 
-  /* 声名目标与卷数按人数分档：目标定在「走完该圈数时的声名 p90」，
-     这样多数对局是走到卷数才收，只有跑得特别快的一家会提前以声名结束。 */
+  /* 声名目标固定 120；后手补偿按人数分档，用 tools/balance.js 调过，
+     目标是同策略下各座位胜率尽量相等。 */
   var BALANCE = {
-    2: { fame: 110, laps: 3 },
-    3: { fame: 110, laps: 2 },
-    4: { fame: 110, laps: 2 }
+    2: { fame: 120, inkStep: 0, fameTable: [0, 0], income: 1 },
+    3: { fame: 120, inkStep: 0, fameTable: [3, 0, 10], income: 1 },
+    4: { fame: 120, inkStep: 1, fameTable: [6, 0, 2, 6], income: 2 }
   };
 
+  /* 教程局用：热度表在 js/hot.js，score 越小越热 */
   /* 机会：多为顺境 */
   var CHANCE = [
     { t: '遇知音', d: '得墨 3', ink: 3 },
@@ -81,7 +81,12 @@
     chanceIdx: 0,
     fateIdx: 0,
     lastCard: null,
-    gen: 0
+    gen: 0,
+    myIdx: 0,
+    paused: false,
+    tutorial: false,
+    scripted: [],
+    turns: 0
   };
   var cfg = { difficulty: 'normal' };
 
@@ -102,6 +107,16 @@
     var byEra = {};
     cards.forEach(function (c) { (byEra[c.era] = byEra[c.era] || []).push(c); });
     Object.keys(byEra).forEach(function (k) { E.shuffle(byEra[k], Math.random); });
+    if (S.tutorial) {
+      // 越热的排在数组末尾，pop() 先取到——每段从最热开始铺
+      Object.keys(byEra).forEach(function (k) {
+        byEra[k].sort(function (a, b) {
+          var sa = window.SBHOT ? SBHOT.score(a) : 9999;
+          var sb = window.SBHOT ? SBHOT.score(b) : 9999;
+          return sb - sa;
+        });
+      });
+    }
 
     var cells = [];
     cells.push({ i: 0, era: -1, eraLabel: '开卷', from: 2008, to: 2026,
@@ -132,7 +147,14 @@
     opts = opts || {};
     S.gen = (S.gen || 0) + 1;
     var bal = BALANCE[roster.length];
-    if (bal) { BOARD.fameTarget = bal.fame; BOARD.laps = bal.laps; }
+    if (bal) {
+      BOARD.fameTarget = bal.fame;
+      BOARD.income = bal.income || 1;
+    }
+    S.tutorial = !!opts.tutorial;
+    S.scripted = S.tutorial ? [2, 3, 1, 4, 2, 3] : [];
+    S.paused = false;
+    S.turns = 0;
     buildBoard();
     var n = roster.length;
     var first = ((opts.firstSeat | 0) % n + n) % n;
@@ -144,10 +166,13 @@
       var pos = S.order.indexOf(i);
       return {
         idx: i, seat: pos, name: r.name, isAI: !!r.isAI,
-        pos: -1, ink: BOARD.startInk + pos, fame: pos * 2,
+        pos: -1,
+        ink: BOARD.startInk + pos * (bal ? bal.inkStep : 1) + (S.tutorial ? 3 : 0),
+        fame: (bal && bal.fameTable ? bal.fameTable[pos] : pos * 2) || 0,
         hand: [], lap: 0, ai: !!r.isAI, rewarded: {}, freeNext: false, skipTurn: false
       };
     });
+    S.myIdx = Math.max(0, roster.map(function (r) { return !!r.isMe; }).indexOf(true));
     S.turn = S.order[0]; S.over = false; S.winner = null; S.phase = 'idle';
     S.log = [];
     log('开局：' + S.players.map(function (p) { return p.name; }).join(' · ') + '。' +
@@ -167,7 +192,7 @@
   /* 重开一局后，上一局排好的定时器必须作废，否则会在新局上乱动 */
   function later(fn, ms) {
     var g = S.gen;
-    setTimeout(function () { if (S.gen === g && !S.over) fn(); }, ms);
+    setTimeout(function () { if (S.gen === g && !S.over && !S.paused) fn(); }, ms);
   }
 
   /** 该玩家在某个维度上占了几格（只看已辑录的歌格） */
@@ -182,7 +207,7 @@
     return n;
   }
 
-  /** 这首歌落在你手上的「最大组」——年代 / 主题 / 同一位词曲作者，取最大，封顶 3 */
+  /** 这首歌落在你手上的「最大组」——年代 / 主题 / 同一位词人或曲师，取最大，封顶 3 */
   function tollOf(cell, ownerIdx) {
     var counts = [countDim(ownerIdx, 'era', cell.era)];
     if (cell.card) {
@@ -191,7 +216,8 @@
         counts.push(countDim(ownerIdx, 'staff', v));
       });
     }
-    return Math.max(1, Math.min(BOARD.maxToll, Math.max.apply(null, counts)));
+    var base = Math.max(1, Math.min(BOARD.maxToll, Math.max.apply(null, counts)));
+    return base + (cell.tollBonus || 0);
   }
 
   /** 辑录后检查三个维度是否成组，每组只奖励一次 */
@@ -222,18 +248,42 @@
   /* ---------------- 行动 ---------------- */
   function roll() {
     // 只允许在「空闲」时掷骰：连点会在移动中再排一次落地，跳过一个玩家
-    if (S.over || S.phase !== 'idle') return;
+    if (S.over || S.phase !== 'idle' || S.paused) return;
     if (cur().isAI) return;
     doRoll();
   }
 
   function doRoll() {
-    var n = 1 + Math.floor(Math.random() * 6);
+    if (S.over || S.phase !== 'idle') return;
+    var n = (S.tutorial && S.scripted.length)
+      ? S.scripted.shift()
+      : 1 + Math.floor(Math.random() * 6);
     S.lastRoll = n;
     S.phase = 'moving';
     log(cur().name + ' 掷得 ' + n + ' 点。');
+    if (!cur().isAI && window.SBApp && SBApp.tutNotify) SBApp.tutNotify('roll');
     render();
     later(function () { move(n); }, 280);
+  }
+
+  /** 加声名并立刻判胜：任何一次加声名都可能刚好到 120，不能再等走完一圈 */
+  function addFame(p, delta) {
+    if (!delta || S.over) return S.over;
+    p.fame = Math.max(0, p.fame + delta);
+    return checkWin(p);
+  }
+
+  function checkWin(p) {
+    if (S.over) return true;
+    p = p || cur();
+    if (p.fame >= BOARD.fameTarget) {
+      S.over = true; S.winner = p.idx; S.phase = 'over';
+      log(p.name + ' 声名先到 ' + BOARD.fameTarget + '，立谱成家。', 'good');
+      render();
+      showResult();
+      return true;
+    }
+    return false;
   }
 
   function move(n) {
@@ -242,11 +292,10 @@
       p.pos = n - 1;                     // 第一手从起点外侧进入
     } else {
       var np = p.pos + n;
-      if (np >= BOARD.size) {            // 过卷
+      if (np >= BOARD.size) {            // 过卷：只加分，不再以「走满几卷」结束
         p.lap++;
-        p.fame += BOARD.passGain;
         log(p.name + ' 走完第 ' + p.lap + ' 卷，声名 +' + BOARD.passGain + '。', 'good');
-        if (p.lap >= BOARD.laps) { endGame(); return; }
+        if (addFame(p, BOARD.passGain)) return;
       }
       p.pos = np % BOARD.size;
     }
@@ -263,11 +312,14 @@
     if (firstTime) log('翻开第 ' + (p.pos + 1) + ' 格。');
 
     if (c.kind === 'start') {
-      p.fame += BOARD.startBonus;
       log(p.name + ' 回到开卷处，声名 +' + BOARD.startBonus + '。', 'good');
+      if (addFame(p, BOARD.startBonus)) return;
       render(); later(nextTurn, 400); return;
     }
-    if (c.isStart) { p.fame += 1; log(p.name + ' 踏入「' + c.eraLabel + '」段首，声名 +1。'); }
+    if (c.isStart) {
+      log(p.name + ' 踏入「' + c.eraLabel + '」段首，声名 +1。');
+      if (addFame(p, 1)) return;
+    }
 
     if (c.kind === 'chance' || c.kind === 'fate') {
       drawCard(p, c.kind);
@@ -277,23 +329,31 @@
     // 歌格
     if (!c.card) { nextTurn(); return; }
     if (c.owner === p.idx) {
-      log('回到自己题过的《' + c.card.name + '》。');
-      render(); later(nextTurn, 300); return;
+      // 重修：只有「跨过一圈又回到这一格」才加价，且只加这一格
+      if (p.lap > (c.claimedLap || 0) && (c.tollBonus || 0) < BOARD.tollLapCap) {
+        c.tollBonus = (c.tollBonus || 0) + 1;
+        log(p.name + ' 重修《' + c.card.name + '》，这一格过路费 +1（现 ' +
+          tollOf(c, p.idx) + ' 墨）。', 'good');
+      } else {
+        log('回到自己题过的《' + c.card.name + '》。');
+      }
+      render(); later(nextTurn, 380); return;
     }
     if (c.owner != null) {
       var owner = S.players[c.owner];
-      var fee = tollOf(c, c.owner) + Math.min(BOARD.tollLapCap, p.lap * BOARD.tollPerLap);
+      var fee = tollOf(c, c.owner);
       if (p.ink >= fee) {
         p.ink -= fee;
-        owner.fame += fee;
         log(p.name + ' 参看 ' + owner.name + ' 题过的《' + c.card.name + '》，付墨 ' + fee +
-          '，' + owner.name + ' 声名 +' + fee + (fee > 1 ? '（此歌已入组）' : '') + '。', 'bad');
+          '，' + owner.name + ' 声名 +' + fee + '。', 'bad');
+        if (addFame(owner, fee)) return;
       } else {
         p.fame = Math.max(0, p.fame - BOARD.debtPenalty);
-        log(p.name + ' 想参看《' + c.card.name + '》却墨不足（需 ' + fee + '），空手而过，声名 −' + BOARD.debtPenalty + '。', 'bad');
+        log(p.name + ' 想参看《' + c.card.name + '》却墨不足（需 ' + fee + '），空手而过，声名 −' +
+          BOARD.debtPenalty + '。', 'bad');
         if (p.fame <= 0) bankrupt(p);
       }
-      render(); later(nextTurn, 500); return;
+      render(); later(nextTurn, 480); return;
     }
 
     // 空歌格：可辑录
@@ -315,7 +375,6 @@
     log(p.name + ' 抽到「' + label + '·' + card.t + '」：' + card.d + '。', kind === 'chance' ? 'good' : 'bad');
 
     p.ink = Math.max(0, p.ink + (card.ink || 0));
-    p.fame = Math.max(0, p.fame + (card.fame || 0));
     if (card.free) p.freeNext = true;
     if (card.skip) p.skipTurn = true;
     if (card.move) {
@@ -324,8 +383,9 @@
     }
 
     render();
+    if (card.fame && addFame(p, card.fame)) return;
     later(function () {
-      if (checkWin()) return;
+      if (checkWin(p)) return;
       nextTurn();
     }, 900);
   }
@@ -348,11 +408,14 @@
     p.fame += ev.fame;
     p.hand.push(c.card);
     c.owner = p.idx;
+    c.claimedLap = p.lap;
+    c.tollBonus = 0;
     log(p.name + ' 辑录《' + c.card.name + '》，付墨 ' + ev.cost + '，声名 +' + ev.fame + '。', 'good');
 
     checkGroups(p);
-    checkWin();
-    if (!S.over) nextTurn();
+    if (window.SBApp && SBApp.tutNotify) SBApp.tutNotify('buy');
+    if (checkWin(p)) return;
+    nextTurn();
   }
 
   /** 采风：得墨，代价是这一轮不行棋 */
@@ -369,7 +432,7 @@
   function bankrupt(p) {
     var lost = p.hand.length, cells = 0;
     S.cells.forEach(function (c) {
-      if (c.owner === p.idx) { c.owner = null; cells++; }
+      if (c.owner === p.idx) { c.owner = null; c.tollBonus = 0; c.claimedLap = 0; cells++; }
     });
     p.hand = [];
     p.rewarded = {};
@@ -384,6 +447,7 @@
     var p = cur(), c = S.cells[p.pos];
     if (!c || !c.card) { nextTurn(); return; }
     log(p.name + ' 略过《' + c.card.name + '》。');
+    if (window.SBApp && SBApp.tutNotify) SBApp.tutNotify('decide');
     nextTurn();
   }
 
@@ -391,6 +455,8 @@
     if (S.over) return;
     S.lastCard = null;
     S.phase = 'idle';
+    S.turns++;
+    if (S.turns > BOARD.maxTurns) { endByFame(); return; }
     S.seat = (S.seat + 1) % S.order.length;
     S.turn = S.order[S.seat];
     var p = cur();
@@ -406,16 +472,11 @@
     if (p.isAI) later(function () { doRoll(); }, 500);
   }
 
-  function checkWin() {
-    var p = cur();
-    if (p.fame >= BOARD.fameTarget) { S.over = true; S.winner = p.idx; S.phase = 'over'; render(); showResult(); return true; }
-    return false;
-  }
-
-  function endGame() {
+  /** 兜底：只在极端长局触发，正常对局到不了 */
+  function endByFame() {
     var best = S.players.slice().sort(function (a, b) { return b.fame - a.fame; })[0];
     S.over = true; S.winner = best.idx; S.phase = 'over';
-    log('两卷已尽，以声名定胜负：' + best.name + ' 胜。', 'good');
+    log('久战不决，以声名定胜负：' + best.name + ' 胜。', 'good');
     render(); showResult();
   }
 
@@ -451,9 +512,21 @@
     var good = gs >= 2.0 || ev.fame >= 5 || worth >= 2.2;
 
     var buyIt;
-    if (diff === 'easy') buyIt = cheap && Math.random() > 0.25;
-    else if (diff === 'hard') buyIt = good;
-    else buyIt = Math.random() < 0.5 ? good : cheap;
+    // 初涉：只买「不易成组」的牌（专挑没用的）
+    if (diff === 'easy') buyIt = gs < 1.0;
+    // 熟手：买不买随机
+    else if (diff === 'normal') buyIt = Math.random() < 0.5;
+    // 老吏：只买能推进组的，或明显高值的
+    else buyIt = cheap || good;
+
+    // 老吏懂得「不买就采风」：同样停一手，白拿 4 墨
+    if (!buyIt && diff === 'hard') {
+      p.ink += BOARD.gatherInk;
+      log(p.name + ' 采风，得墨 ' + BOARD.gatherInk + '，这一轮不行棋。');
+      render();
+      nextTurn();
+      return;
+    }
 
     // 墨囤到用不完就别再省了
     if (!buyIt && p.ink >= 8) buyIt = true;
@@ -518,13 +591,15 @@
         '</div>' +
         (who ? '<div class="c-owner" style="color:' + playerColor(who.idx) + '">' + esc(who.name) +
           (function () {
-            var fee = tollOf(cell, who.idx) + Math.min(BOARD.tollLapCap, cur().lap * BOARD.tollPerLap);
+            var fee = tollOf(cell, who.idx);
             return '<i class="c-toll" title="踩到这一格要付 ' + fee + ' 墨给 ' + esc(who.name) +
-              '（第 ' + (cur().lap + 1) + ' 圈）">' + fee + '墨</i>';
+              ((cell.tollBonus || 0) ? '（主人重修过 ' + cell.tollBonus + ' 次）' : '') + '">' + fee + '墨</i>';
           })() + '</div>' : '') +
         '<div class="c-pieces">' + pieces + '</div>';
       if (known && cell.kind === 'song' && cell.card) {
+        d.title = '《' + cell.card.name + '》　点开档案 · 右键 / 长按看解析';
         d.addEventListener('click', function () { App.openCard(cell.card, null); });
+        if (App.bindArchive) App.bindArchive(d, cell.card, null);
       }
       grid.appendChild(d);
     });
@@ -534,8 +609,8 @@
   function renderSide() {
     var wrap = $('#bp-side');
     if (!wrap || !S.players.length) return;
-    // 人机局固定显示自己（idx 0）；热座局跟着当前出手的人
-    var p = S.players.some(function (x) { return x.isAI; }) ? S.players[0] : cur();
+    // 固定显示「你」的成组进度；热座局也以你那一席为准
+    var p = S.players[S.myIdx] || cur();
     var need = BOARD.groupSize;
 
     var eraCnt = {}, typeCnt = {}, staffCnt = {};
@@ -571,14 +646,15 @@
     wrap.innerHTML =
       '<div class="side-t">成 组 <em class="' + (total ? 'hit' : '') + '">' + esc(p.name) +
         ' · 已立 ' + total + ' 组</em></div>' +
-      '<div class="side-t sub-t">年 代 <em>' + eraDone + '/' + eras.length + '</em></div>' +
+      '<div class="side-t sub-t">年 代 段 <em>' + eraDone + '/' + eras.length + '</em></div>' +
       '<div class="side-list">' + eraPills + '</div>' +
       '<div class="side-t sub-t">主 题 <em>' + themeDone + '/4</em></div>' +
       '<div class="side-list">' + themePills + '</div>' +
       '<div class="side-t sub-t">班 底 <em>' + staffDone + ' 组 · ' + staffNames.length + ' 位</em></div>' +
       '<div class="side-list">' + (staffPills || '<span class="side-empty">还没有占地</span>') + '</div>' +
       '<div class="side-note">同一维度占满 ' + need + ' 格即成组：立刻 +' + BOARD.groupBonus +
-        ' 声名，过路费也按最大的组成倍收。</div>';
+        ' 声名，过路费也按最大的组成倍收。<br>年代段＝同一段占几格；主题＝同类占几格；' +
+        '班底＝同一位词人或曲师占几格（跨歌的词曲互通也算，同一首歌词曲同人只算一格）。</div>';
   }
 
   function playerColor(i) {
@@ -590,13 +666,19 @@
     var info = $('#bp-info');
     if (!btn) return;
     var p = cur();
+    var mine = !S.over && !p.isAI && S.phase === 'idle' && !S.paused;
     btn.disabled = S.over || p.isAI || S.phase !== 'idle';
+    btn.classList.toggle('hot', mine);
     btn.querySelector('.t').textContent = S.over ? '终 局' : (p.isAI ? p.name + ' 行棋' : '掷 骰');
     var sub = btn.querySelector('.d');
-    if (sub) sub.textContent = '走完 ' + BOARD.laps + ' 卷 / 声名 ' + BOARD.fameTarget;
+    if (sub) sub.textContent = mine ? '轮到你 · 点此行棋' : ('声名先到 ' + BOARD.fameTarget);
 
     var gb = $('#bp-gather');
     if (gb) gb.disabled = S.over || p.isAI || S.phase !== 'idle';
+
+    // 引导只在自己该动的时候出现；棋盘全暗时它就是「该点这里」的指路牌
+    var coach = $('#bp-coach');
+    if (coach) coach.hidden = !mine || !!document.querySelector('.tut-layer');
 
     // 列数按钮的选中态
     Array.prototype.forEach.call(document.querySelectorAll('#bp-cols button'), function (b) {
@@ -614,6 +696,7 @@
         '<div class="bp-card">' +
           '<div class="bc-name">' + esc(c.card.name) + '</div>' +
           '<div class="bc-meta">' + c.card.year + ' · ' + esc(c.card.type) + ' · 词 ' + esc(join(c.card.lyricist)) + ' · 曲 ' + esc(join(c.card.composer)) + '</div>' +
+          '<div class="bc-parse" id="bp-parse">点这里 / 右键 / 长按 → 看这首歌的解析</div>' +
           '<div class="bc-ev">' + (ev
             ? '费墨 <b>' + ev.cost + '</b>　声名 <b>+' + ev.fame + '</b>（' + ev.parts.map(function (x) { return x.text + '+' + x.value; }).join('，') + '）'
             : '墨不足或谱已满，无法辑录') + '</div>' +
@@ -625,6 +708,10 @@
       var b1 = $('#bp-buy'), b2 = $('#bp-skip');
       if (b1) b1.addEventListener('click', buy);
       if (b2) b2.addEventListener('click', skip);
+      var bp = $('#bp-parse');
+      if (bp) bp.addEventListener('click', function () { App.openCard(c.card, null); });
+      var bpc = $('.bp-card', info);
+      if (bpc && App.bindArchive) App.bindArchive(bpc, c.card, null);
     } else {
       var last = S.lastCard;
       info.innerHTML = (last
@@ -632,8 +719,10 @@
           '<div class="bc-meta">机会 / 命运</div>' +
           '<div class="bc-ev">' + esc(last.d) + '</div></div>'
         : '<div class="bp-hint">' + (S.over ? '' :
-          '空档 —— 等 <b>' + esc(p.name) + '</b> 掷骰。可掷骰行棋，也可<b>采风</b>：得 ' +
-          BOARD.gatherInk + ' 墨，这一轮不行棋。') + '</div>');
+          (p.isAI
+            ? '等 <b>' + esc(p.name) + '</b> 行棋……'
+            : '<b>轮到你</b> —— 点下方朱色「掷骰」行棋；缺墨可点「采风」得 ' +
+              BOARD.gatherInk + ' 墨。<br><span style="color:var(--seal)">已翻开的歌格：点开档案，右键 / 长按看解析。</span>')) + '</div>');
     }
 
     var logBox = $('#bp-log');
@@ -649,18 +738,33 @@
 
   function showResult() {
     var w = S.players[S.winner];
-    var iWin = S.winner === 0;
+    var me = S.players[S.myIdx];
+    var iWin = S.winner === S.myIdx;
     $('#bp-result-title').textContent = iWin ? '路 成' : '路 未 成';
     $('#bp-result-sub').innerHTML = iWin
       ? '你以声名 <b>' + w.fame + '</b> 先成一家，行 ' + (w.lap) + ' 卷。'
-      : '<b>' + esc(w.name) + '</b> 以声名 <b>' + w.fame + '</b> 先成一家；你 ' + S.players[0].fame + ' 声名，行 ' + S.players[0].lap + ' 卷。';
+      : '<b>' + esc(w.name) + '</b> 以声名 <b>' + w.fame + '</b> 先成一家；你 ' + me.fame + ' 声名，行 ' + me.lap + ' 卷。';
     $('#modal-bp-result').classList.add('open');
+  }
+
+  function pause() { S.paused = true; }
+  function resume() {
+    S.paused = false;
+    render();
+    if (S.over) return;
+    var p = cur();
+    if (p.isAI && S.phase === 'idle') later(function () { doRoll(); }, 500);
+    else if (p.isAI && S.phase === 'decide') later(function () { aiDecide(); }, 400);
   }
 
   window.SBBoard = {
     S: S, BOARD: BOARD, BALANCE: BALANCE, cfg: cfg,
     start: startGame, roll: roll, gather: gather, render: render,
+    pause: pause, resume: resume,
     land: land,          // 调试用：手动触发一次落点结算
-    reset: function () { S.cells = []; S.players = []; S.over = false; S.phase = 'idle'; }
+    reset: function () {
+      S.cells = []; S.players = []; S.over = false; S.phase = 'idle';
+      S.paused = false; S.turns = 0; S.scripted = []; S.tutorial = false;
+    }
   };
 })();

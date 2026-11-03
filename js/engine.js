@@ -13,10 +13,10 @@
     marketSize: 5,        // 歌肆常驻张数
     handLimit: 0,         // 词宗谱容量；0 = 不限
     startInk: 3,          // 起手墨
-    secondBonus: 2,       // 后手补偿墨（按座位递增）
-    seatFameTable: [0, 3, 4, 5], // 各座位的起始声名补偿（先手 0，越后越多）
+    secondBonus: 2,       // 后手补偿墨（按出手位次递增）
+    seatFameTable: [0, 2, 3, 4], // 各座位的起始声名补偿（先手 0，越后越多）
     income: 2,            // 每回合开头得墨
-    inkCap: 12,           // 墨上限（防囤积）
+    inkCap: Infinity,     // 墨不设上限（2026-11 去掉 12 的封顶）
     gatherInk: 4,         // 采风得墨
     gatherRefresh: 1,     // 采风附带刷新几张歌肆
 
@@ -46,29 +46,34 @@
     schoolExclusive: false,// 一张牌只能计入一派
     schoolPerTwo: true,   // 同一创作者每 schoolSize 首算一派（四首=两派）
     schoolDims: ['lyricist', 'composer'], // 立派只看这几个创作角色
+    schoolMinCards: 0,    // 立派还要求谱中至少几张（0 = 不额外要求，用来微调立派难度）
+    schoolDeep: false,    // 有一派用满 4 首时，可免去 schoolMinCards 的张数要求
     eraTarget: 6,         // 终点线三：通史段数
     eraMinPerEra: 1,      // 每个年代至少几张
     eraDoubleSegs: 4,     // 至少几个年代各有 2 张
     eraMinGroups: 3,      // 通史还须跨几个主题
     eraMinCards: 8,       // 通史额外张数要求
     balancedDraw: false,  // 补牌时优先补最缺的年代；关掉则纯随机（会让通史变难）
+    aiBias: null,         // 只影响墨客选主线：{ fame, eras, schools, themes } 的权重
     maxRounds: 40
   };
 
-  /* 按人数分档的目标表：人数越多，每人能拿到的牌越少 */
+  /* 按人数分档的目标表：人数越多，每人能拿到的牌越少。
+     inkStep / fameTable 是「后手补偿」：按出手位次发，先手 0。
+     这两组数与 a–f 六个目标值一起用 AI 互搏调过（见 tools/balance.js）。 */
   var BALANCE = {
-    2: { fame: 44, eras: 6, schools: 5, themeSize: 7, themeEras: 3, groups: 3, minCards: 8, doubles: 4, income: 2 },
-    3: { fame: 45, eras: 6, schools: 5, themeSize: 7, themeEras: 5, groups: 3, minCards: 8, doubles: 4, income: 3 },
-    4: { fame: 44, eras: 6, schools: 5, themeSize: 7, themeEras: 5, groups: 2, minCards: 8, doubles: 4, income: 3 }
+    2: { fame: 44, eras: 6, schools: 5, themeSize: 7, themeEras: 4, groups: 2, minCards: 8, doubles: 4, income: 2, inkStep: 1, fameTable: [0, 0], schoolMinCards: 11, schoolDeep: true, aiBias: { themes: 1.18, schools: 1.08 } },
+    3: { fame: 44, eras: 6, schools: 5, themeSize: 7, themeEras: 5, groups: 3, minCards: 8, doubles: 4, income: 3, inkStep: 1, fameTable: [0, 1, 3], aiBias: { themes: 1.12, eras: 0.92, schools: 1.1 } },
+    4: { fame: 43, eras: 6, schools: 5, themeSize: 8, themeEras: 4, groups: 3, minCards: 8, doubles: 4, income: 4, inkStep: 1, fameTable: [0, 0, 3, 4], aiBias: { schools: 1.55, fame: 0.85 } }
   };
 
   /* ---------------- 维度定义 ----------------
-     只算「人」的维度：作词 / 作曲 / 编曲 / 演唱。
+     只算「人」的维度：词人 / 曲师 / 编曲 / 演唱。
      类型、题材、声库、批次这类标签太容易偶然撞对，
      会让双璧线变成抽卡运气，而不是班底经营。 */
   var PAIR_DIMS = [
-    { key: 'lyricist', label: '作词' },
-    { key: 'composer', label: '作曲' }
+    { key: 'lyricist', label: '词人' },
+    { key: 'composer', label: '曲师' }
   ];
 
   /* ---------------- 随机数（可复现） ---------------- */
@@ -243,7 +248,16 @@
     var themes = countThemes(player.hand, cfg);
     return {
       fame: { now: player.fame, target: cfg.fameTarget, ratio: Math.min(1, player.fame / cfg.fameTarget) },
-      schools: { now: schools.total, target: cfg.schoolTarget, ratio: Math.min(1, schools.total / cfg.schoolTarget), detail: schools.detail },
+      schools: {
+        now: schools.total, target: cfg.schoolTarget,
+        ratio: Math.min(1, schools.total / cfg.schoolTarget),
+        detail: schools.detail,
+        minCards: cfg.schoolMinCards || 0,
+        ok: schools.total >= cfg.schoolTarget && (
+          player.hand.length >= (cfg.schoolMinCards || 0) ||
+          (cfg.schoolDeep && schools.detail.some(function (d) { return (d.count || 0) >= 3; }))
+        )
+      },
       eras: {
         now: eraCount, target: cfg.eraTarget,
         ratio: Math.min(1, eraCount / cfg.eraTarget),
@@ -305,6 +319,8 @@
       if (BAL.minCards) this.config.eraMinCards = BAL.minCards;
       if (BAL.doubles) this.config.eraDoubleSegs = BAL.doubles;
       if (BAL.income) this.config.income = BAL.income;
+      if (BAL.inkStep != null) this.config.secondBonus = BAL.inkStep;
+      if (BAL.fameTable) this.config.seatFameTable = BAL.fameTable;
     }
 
     // 显式覆盖放在人数表之后，调试/模拟时才能压过 BALANCE
@@ -472,7 +488,7 @@
     var pg = progress(p, this.config);
     var by = null;
     if (pg.fame.now >= this.config.fameTarget) by = 'fame';
-    else if (pg.schools.now >= this.config.schoolTarget) by = 'schools';
+    else if (pg.schools.ok) by = 'schools';
     else if (pg.eras.ok) by = 'eras';
     else if (pg.themes.now >= this.config.themeTarget) by = 'themes';
     if (by) {
