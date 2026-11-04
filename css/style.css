@@ -1124,13 +1124,14 @@ h1, h2, h3 { font-weight: 400; }
 #zone-me.now { box-shadow: 0 0 0 2px rgba(158,61,50,.16); }
 
 .bp-p.now { box-shadow: 0 0 0 1px rgba(158,61,50,.22); }
-.bp-p.now .nm { font-size: 13px; }
+.bp-p.now .nm { font-size: 14px; }
 .bp-p .nm i.cur {
   font-style: normal; background: var(--seal); color: #fdf8ef;
-  font-size: 9px; padding: 0 4px; margin-left: 5px; border-radius: 2px;
+  font-size: 10px; padding: 1px 5px; margin-left: 6px; border-radius: 2px;
   letter-spacing: .08em; opacity: 1;
 }
 
 .side-t.side-who { align-items: center; }
-.side-t.side-who .who-name { font-size: 14.5px; margin-right: 2px; }
-.side-t.side-who em { margin-left: auto; font-size: 10px; }
+.side-t.side-who .who-name { font-size: 17px; margin-right: 4px; letter-spacing: .14em; }
+.side-t.side-who em { margin-left: auto; font-size: 11.5px; color: var(--ink-3); }
+.side-t.side-who .who-flag { font-size: 10px; padding: 2px 7px; }
