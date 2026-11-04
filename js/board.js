@@ -712,7 +712,7 @@
 
     wrap.innerHTML =
       '<div class="side-t side-who">' +
-        (viewIdx === S.turn && !S.over ? '<b class="who-flag">当前出手</b>' : '') +
+        (humans > 1 && viewIdx === S.turn && !S.over ? '<b class="who-flag">当前出手</b>' : '') +
         '<b class="who-name">' + esc(p.name) + '</b>' +
         '<em class="' + (total ? 'hit' : '') + '">已立 ' + total + ' 组</em></div>' +
       '<div class="side-t sub-t">年 代 段 <em>' + eraDone + '/' + eras.length + '</em></div>' +

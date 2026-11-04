@@ -139,10 +139,21 @@
     return App.seats.slice(0, App.count);
   }
 
-  /** 把「我」留在可见席位里：人数调小时，若「我」被挤出前 N 位，就换到末位 */
+  /** 前 N 席里有几个真人：「你」只在这一个真人时用，两个以上一律「玩家X」 */
+  function humanCount() {
+    return App.seats.slice(0, App.count).filter(function (s) { return !s.isAI; }).length;
+  }
+
+  /** 把「我」留在可见席位里：人数调小时换到末位；「我」被改成机时移交给第一个真人 */
   function keepMeVisible() {
-    var i = App.seats.findIndex(function (s) { return s.isMe; });
-    if (i < 0) { App.seats[0].isMe = true; i = 0; }
+    var i = App.seats.findIndex(function (s) { return s.isMe && !s.isAI; });
+    if (i < 0) {
+      App.seats.forEach(function (s) { if (s.isAI) s.isMe = false; });
+      for (var k = 0; k < App.count; k++) {
+        if (!App.seats[k].isAI) { App.seats[k].isMe = true; i = k; break; }
+      }
+      if (i < 0) return;                 // 全桌都是机：由「机」按钮拦住，这里兜底
+    }
     if (i >= App.count) {
       var t = App.seats[App.count - 1];
       App.seats[App.count - 1] = App.seats[i];
@@ -154,12 +165,12 @@
   function seatLabel(i) { return '玩家' + (CN[i] || (i + 1)); }
 
   function humanDefaultName(pos) {
-    return App.count > 1 ? seatLabel(pos) : HUMAN_NAMES[0];
+    return humanCount() > 1 ? seatLabel(pos) : HUMAN_NAMES[0];
   }
 
-  /** 多人局不叫「你」：没手动改过的名字，按出手位统一编成「玩家N」 */
+  /** 没手动改过的名字：真人多时编成「玩家X」，只有一个真人时叫「你」，其余按位次叫墨客 */
   function relabelSeats() {
-    var multi = App.count > 1;
+    var multi = humanCount() > 1;
     App.seats.forEach(function (s, i) {
       if (s.manual) return;
       if (s.isAI) s.name = AI_NAMES[i - 1] || '墨客';
@@ -169,8 +180,8 @@
 
   function buildSeats() {
     if (!App.seats.length) App.seats = defaultSeats();
+    keepMeVisible();      // 先定「我」，再按最终座次命名
     relabelSeats();
-    keepMeVisible();
     var wrap = $('#seats');
     wrap.innerHTML = '';
     orderSeats().forEach(function (st, pos) {
@@ -190,14 +201,15 @@
 
       var kb = row.querySelector('.kind');
       kb.addEventListener('click', function () {
-        if (st.isMe) { toast('这一席是你自己，不能改成「机」'); return; }
-        st.isAI = !st.isAI;
-        if (!st.manual) {
-          st.name = st.isAI ? (AI_NAMES[pos - 1] || '墨客') : humanDefaultName(pos);
-          inp.value = st.name;
+        var toAI = !st.isAI;
+        // 任何一席都能改成「机」，只要求整桌至少留一个真人（全是机就没人能出手）
+        if (toAI) {
+          var left = App.seats.slice(0, App.count).filter(function (x) { return x !== st && !x.isAI; }).length;
+          if (!left) { toast('至少留一个真人席位——全是「机」就没人能出手了'); return; }
+          if (st.isMe) st.manual = false;   // 「你」变成机后按墨客的名字重排
         }
-        kb.dataset.k = st.isAI ? 'ai' : 'human';
-        kb.textContent = st.isAI ? '机' : '人';
+        st.isAI = toAI;
+        buildSeats();                       // 称呼可能从「你」变「玩家X」，整表重建
       });
 
       bindSeatDrag(row, wrap);
@@ -329,9 +341,10 @@
     var frag = document.createDocumentFragment();
 
     var head = el('div', 'zone-head');
+    var multiHuman = g.state.players.filter(function (x) { return !x.isAI; }).length > 1;
     head.innerHTML =
       '<span class="who">' +
-        (p.idx === g.state.current && !g.state.over ? '<b class="who-flag">当前出手</b>' : '') +
+        (multiHuman && p.idx === g.state.current && !g.state.over ? '<b class="who-flag">当前出手</b>' : '') +
         '<b class="who-name">' + esc(p.name) + '</b>' +
         (p.isAI ? '<span class="now-tag" style="color:var(--ink-4);border-color:var(--line)">机</span>' : '') +
       '</span>' +
@@ -1049,11 +1062,11 @@
     window.scrollTo(0, 0);
   }
 
-  /** 开局阵容的名字兜底：多人局统一「玩家N」，单人局才是「你」 */
+  /** 开局阵容的名字兜底：真人多于一个用「玩家X」，只有一个真人时才叫「你」 */
   function rosterName(s, i) {
     if (s.name) return s.name;
     if (s.isAI) return AI_NAMES[i - 1] || '墨客';
-    return App.count > 1 ? seatLabel(i) : HUMAN_NAMES[0];
+    return humanCount() > 1 ? seatLabel(i) : HUMAN_NAMES[0];
   }
 
   function startGame() {
@@ -1065,6 +1078,10 @@
     var roster = App.seats.slice(0, App.count).map(function (s, i) {
       return { name: s.name || rosterName(s, i), isAI: !!s.isAI, isMe: !!s.isMe };
     });
+    if (!roster.some(function (r) { return !r.isAI; })) {
+      toast('至少要有一个真人席位才能开局——全是「机」就没人出手了');
+      return;
+    }
 
     if (App.mode === 'board') { launchBoard(roster, {}); return; }
 
