@@ -688,11 +688,19 @@
         '<span>第 <b>' + g.state.round + '</b> 轮</span>' +
         '<span>终局 <b>' + byLabel + '</b></span>';
     }
-    $('#end-title').textContent = iWin ? '谱 成' : '谱 未 成';
+    // 单人局说「谱成/谱未成」；多人局谁赢写谁——真人赢就「玩家二 谱已成」，机器赢仍记「谱未成」
+    var humans = g.state.players.filter(function (x) { return !x.isAI; }).length;
+    var multiH = humans > 1;
+    var winnerIsAI = !!(winP && winP.isAI);
+    $('#end-title').textContent = !multiH
+      ? (iWin ? '谱 成' : '谱 未 成')
+      : (winnerIsAI ? '谱 未 成' : winP.name + ' 谱已成');
     var meTag = me.name === HUMAN_NAMES[0] ? '你' : '<b>' + esc(me.name) + '</b>';
-    $('#end-sub').innerHTML = iWin
-      ? meTag + '以<b>' + byLabel + '</b>先成一家。第 ' + g.state.round + ' 轮，声名 ' + me.fame + '，谱中 ' + me.hand.length + ' 首。'
-      : '<b>' + esc(winP.name) + '</b> 以<b>' + byLabel + '</b>先成一家。第 ' + g.state.round + ' 轮，' + meTag + '声名 ' + me.fame + '，谱中 ' + me.hand.length + ' 首。';
+    $('#end-sub').innerHTML = !multiH
+      ? (iWin
+          ? '以<b>' + byLabel + '</b>先成一家。第 ' + g.state.round + ' 轮，声名 ' + me.fame + '，谱中 ' + me.hand.length + ' 首。'
+          : '<b>' + esc(winP.name) + '</b> 以<b>' + byLabel + '</b>先成一家。第 ' + g.state.round + ' 轮，' + meTag + '声名 ' + me.fame + '，谱中 ' + me.hand.length + ' 首。')
+      : '<b>' + esc(winP.name) + '</b> 以<b>' + byLabel + '</b>先成一家。第 ' + g.state.round + ' 轮，谱中 ' + winP.hand.length + ' 首。';
 
     var hw = $('#end-hand'); hw.innerHTML = '';
     me.hand.forEach(function (c) {
@@ -1703,11 +1711,19 @@
     var groups = Object.keys(me.rewarded || {}).length;
     var diffCn = { easy: '初涉', normal: '熟手', hard: '老吏' }[B.cfg.difficulty || 'normal'] || '熟手';
 
-    $('#bpe-title').textContent = iWin ? '路 成' : '路 未 成';
+    // 单人局「路成/路未成」；多人局真人赢写「玩家二 路已成」，机器赢仍记「路未成」
+    var humans = S.players.filter(function (x) { return !x.isAI; }).length;
+    var multiH = humans > 1;
+    var wAI = !!(w && w.isAI);
+    $('#bpe-title').textContent = !multiH
+      ? (iWin ? '路 成' : '路 未 成')
+      : (wAI ? '路 未 成' : w.name + ' 路已成');
     var bpeMe = me.name === HUMAN_NAMES[0] ? '你' : esc(me.name);
-    $('#bpe-sub').innerHTML = iWin
-      ? '<b>' + bpeMe + '</b> 以声名 <b>' + me.fame + '</b> 先成一家，行 ' + me.lap + ' 卷。'
-      : '<b>' + esc(w.name) + '</b> 以声名 <b>' + w.fame + '</b> 先成一家；' + bpeMe + ' ' + me.fame + ' 声名，行 ' + me.lap + ' 卷。';
+    $('#bpe-sub').innerHTML = !multiH
+      ? (iWin
+          ? '<b>' + bpeMe + '</b> 以声名 <b>' + me.fame + '</b> 先成一家，行 ' + me.lap + ' 卷。'
+          : '<b>' + esc(w.name) + '</b> 以声名 <b>' + w.fame + '</b> 先成一家；' + bpeMe + ' ' + me.fame + ' 声名，行 ' + me.lap + ' 卷。')
+      : '<b>' + esc(w.name) + '</b> 以声名 <b>' + w.fame + '</b> 先成一家，行 ' + w.lap + ' 卷。';
     $('#bpe-meta').innerHTML =
       '<span>玩法 <b>词路</b></span><span><b>' + S.players.length + '</b> 人</span>' +
       '<span>难度 <b>' + diffCn + '</b></span><span><b>' + S.turns + '</b> 手</span>' +
@@ -1768,11 +1784,14 @@
     var dbl = cfg.eraDoubleSegs || 0, grp = cfg.eraMinGroups || 0;
     var eraP = Math.min(pg.eras.now / cfg.eraTarget, dbl ? (pg.eras.doubles || 0) / dbl : 1, grp ? (pg.eras.groups || 0) / grp : 1);
 
+    var humans = g.state.players.filter(function (x) { return !x.isAI; }).length;
+    var multiH = humans > 1;
+    var wAI = !!(winP && winP.isAI);
     return {
       mode: '词宗',
       win: iWin,
-      verdict: iWin ? '谱 成' : '谱 未 成',
-      line: iWin ? '以「' + byLabel + '」先成一家' : '「' + winP.name + '」以「' + byLabel + '」先成一家',
+      verdict: !multiH ? (iWin ? '谱 成' : '谱 未 成') : (wAI ? '谱 未 成' : winP.name + ' 谱已成'),
+      line: (!multiH && !iWin) ? '「' + winP.name + '」以「' + byLabel + '」先成一家' : '以「' + byLabel + '」先成一家',
       meta: [g.state.players.length + ' 人', DIFF_LABEL[App.lastDiff || App.difficulty] || '熟手', '第 ' + g.state.round + ' 轮'],
       players: g.state.players.map(function (p) {
         return { name: p.name, fame: p.fame, hand: p.hand.length, me: p.idx === my, win: p.idx === g.state.winner };
@@ -1797,11 +1816,14 @@
     var iWin = S.winner === S.myIdx;
     var cells = S.cells.filter(function (c) { return c.owner === S.myIdx; }).length;
     var groups = Object.keys(me.rewarded || {}).length;
+    var humans = S.players.filter(function (x) { return !x.isAI; }).length;
+    var multiH = humans > 1;
+    var wAI = !!(w && w.isAI);
     return {
       mode: '词路',
       win: iWin,
-      verdict: iWin ? '路 成' : '路 未 成',
-      line: iWin ? '以声名 ' + me.fame + ' 先成一家' : '「' + w.name + '」以声名 ' + w.fame + ' 先成一家',
+      verdict: !multiH ? (iWin ? '路 成' : '路 未 成') : (wAI ? '路 未 成' : w.name + ' 路已成'),
+      line: (!multiH && !iWin) ? '「' + w.name + '」以声名 ' + w.fame + ' 先成一家' : '以声名 ' + w.fame + ' 先成一家',
       meta: [S.players.length + ' 人', DIFF_LABEL[B.cfg.difficulty] || '熟手', S.turns + ' 手'],
       players: S.players.slice().sort(function (a, b) { return b.fame - a.fame; }).map(function (p) {
         return { name: p.name, fame: p.fame, hand: p.hand.length, me: p.idx === S.myIdx, win: p.idx === S.winner };
@@ -1975,15 +1997,17 @@
     return y;
   }
 
-  function renderShare(spec) {
+  function renderShare(spec, scale) {
+    scale = scale || 2;                 // 2 倍图：导出/保存时文字与细线更清晰
     var W = 900;
     var probe = document.createElement('canvas');
     probe.width = W; probe.height = 1400;
     var bottom = paintShare(probe.getContext('2d'), spec, 1400);
     var H = Math.max(820, Math.min(2400, bottom + 120));
     var cv = document.createElement('canvas');
-    cv.width = W; cv.height = H;
+    cv.width = W * scale; cv.height = H * scale;
     var c = cv.getContext('2d');
+    c.scale(scale, scale);
     paintShare(c, spec, H);
 
     // 页脚
@@ -2015,6 +2039,7 @@
   }
 
   App.showShare = showShare;
+  App.finish = finish;          // 结算页：供截图/调试直接调用
   App.deckShareSpec = deckShareSpec;
   App.boardShareSpec = boardShareSpec;
 
