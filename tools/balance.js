@@ -29,7 +29,7 @@ const DIFF_CN = { easy: '初涉', normal: '熟手', hard: '老吏' };
 const BOARD_BALANCE = {
   2: { fame: 120, inkStep: 0, fameTable: [0, 0], income: 1 },
   3: { fame: 120, inkStep: 0, fameTable: [3, 2, 8], income: 1 },
-  4: { fame: 120, inkStep: 1, fameTable: [6, 0, 2, 6], income: 2 }
+  4: { fame: 120, inkStep: 1, fameTable: [9, 0, 2, 4], income: 2 }
 };
 const LINE_CN = { fame: '声名', eras: '通史', schools: '立派', themes: '成题', timeout: '超时' };
 
@@ -106,7 +106,7 @@ const B = {
   startBonus: 2, handLimit: 0, tollLapCap: 2, maxTurns: 400,
   hardWinNow: true, hardBlock: true, hardBehind: true,
   easyNoiseByN: { 2: [0, 0], 3: [0, 0, 0], 4: [0, 0, 0, 0] },
-  hardNoiseByN: { 2: [0.10, 0], 3: [0.18, 0, 0], 4: [0.10, 0.06, 0.02, 0] }
+  hardNoiseByN: { 2: [0.12, 0], 3: [0.18, 0, 0], 4: [0.10, 0.12, 0.08, 0] }
 };
 const CHANCE = [
   { ink: 3 }, { ink: 4 }, { fame: 2 }, { fame: 3 }, { ink: 2, fame: 1 },

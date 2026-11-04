@@ -23,6 +23,7 @@
     hardBlock: true,                                 // 老吏：对手下一张就能赢时，抢掉那张
     hardSeatCatch: true,                             // 老吏后手：更积极（降门槛、加阻断）
     easyMistakeByN: { 2: [0.025, 0], 3: [0.025, 0, 0.01], 4: [0.02, 0, 0.008, 0.032] },  // 初涉：各手位「故意失误」率（该买却采风，不改策略）
+    hardMistakeByN: { 2: [0, 0], 3: [0.03, 0.035, 0], 4: [0.035, 0.05, 0.01, 0] },  // 老吏：各手位「故意失误」率（同上，只削先手）
     hardNoiseByN: {                                  // 老吏：手位噪声（削先手，压平座位差）
       2: [1.2, 0],
       3: [1.4, 0, 0],
@@ -232,6 +233,13 @@
       var emArr = TUNE.easyMistakeByN[game.state.players.length] || [];
       var em = emArr[p.seat || 0] || 0;
       if (em && game.rnd() < em) return { type: 'gather', plan: planInfo.plan, mistake: true };
+    }
+
+    // 老吏「故意失误」：按手位概率放弃这一手（该买却采风），只削先手
+    if (difficulty === 'hard' && TUNE.hardMistakeByN) {
+      var hmArr = TUNE.hardMistakeByN[game.state.players.length] || [];
+      var hm = hmArr[p.seat || 0] || 0;
+      if (hm && game.rnd() < hm) return { type: 'gather', plan: planInfo.plan, mistake: true };
     }
 
     // 只把「买得起且谱未满」的牌放进候选，再按分数排名

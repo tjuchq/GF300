@@ -30,7 +30,7 @@
     hardBlock: true,    // 老吏：抢掉能让对手成组的格子
     hardBehind: true,   // 老吏落后时更进取
     easyNoiseByN: { 2: [0, 0], 3: [0, 0, 0], 4: [0, 0, 0, 0] },   // 初涉：各手位随机失误率（只削先手，不改策略）
-    hardNoiseByN: { 2: [0.10, 0], 3: [0.18, 0, 0], 4: [0.10, 0.06, 0.02, 0] },  // 老吏：各手位随机失误率（同上）
+    hardNoiseByN: { 2: [0.12, 0], 3: [0.18, 0, 0], 4: [0.10, 0.12, 0.08, 0] },  // 老吏：各手位随机失误率（同上）
     tollLapCap: 2,      // 同一格被主人重修的上限（每重修一次 +1 墨）
     maxTurns: 400       // 只作死循环兜底，正常对局远到不了
   };
@@ -40,7 +40,7 @@
   var BALANCE = {
     2: { fame: 120, inkStep: 0, fameTable: [0, 0], income: 1 },
     3: { fame: 120, inkStep: 0, fameTable: [3, 2, 8], income: 1 },
-    4: { fame: 120, inkStep: 1, fameTable: [6, 0, 2, 6], income: 2 }
+    4: { fame: 120, inkStep: 1, fameTable: [9, 0, 2, 4], income: 2 }
   };
 
   /* 教程局用：热度表在 js/hot.js，score 越小越热 */
@@ -350,19 +350,13 @@
         c.tollBonus = (c.tollBonus || 0) + 1;
         var now = tollOf(c, p.idx);
         log(p.name + ' 重修《' + c.card.name + '》，这一格过路费 +1（现 ' + now + ' 墨）。', 'good');
-        if (p.idx === S.myIdx) {
-          toast('重修《' + c.card.name + '》：这一格过路费升到 ' + now + ' 墨。', 2600);
-        }
+        toast(p.name + ' 重修《' + c.card.name + '》：这一格过路费升到 ' + now + ' 墨。', 2600);
       } else if ((c.tollBonus || 0) >= BOARD.tollLapCap) {
         log(p.name + ' 回到《' + c.card.name + '》；这一格已重修到顶（' + tollOf(c, p.idx) + ' 墨）。');
-        if (p.idx === S.myIdx) {
-          toast('《' + c.card.name + '》已重修到顶：' + tollOf(c, p.idx) + ' 墨。', 2200);
-        }
+        toast(p.name + ' 的《' + c.card.name + '》已重修到顶：' + tollOf(c, p.idx) + ' 墨。', 2200);
       } else {
-        log('回到自己辑录的《' + c.card.name + '》。');
-        if (p.idx === S.myIdx) {
-          toast('回到自己的《' + c.card.name + '》；走完一圈后再踩到，过路费才会涨。', 2400);
-        }
+        log(p.name + ' 回到自己辑录的《' + c.card.name + '》。');
+        toast(p.name + ' 回到自己的《' + c.card.name + '》；走完一圈后再踩到，过路费才会涨。', 2400);
       }
       render(); later(nextTurn, 380); return;
     }
@@ -374,20 +368,14 @@
         log(p.name + ' 参看 ' + owner.name + ' 辑录的《' + c.card.name + '》，付润笔 ' + fee +
           ' 墨，' + owner.name + ' 声名 +' + fee + '。', 'bad');
         if (addFame(owner, fee)) return;   // 润笔转成主人的声名（这一行此前漏掉）
-        if (p.idx === S.myIdx) {
-          toast('翻阅 ' + owner.name + ' 辑录的《' + c.card.name + '》：付 ' + fee + ' 墨，他 +' + fee + ' 声名。', 2800);
-        } else if (owner.idx === S.myIdx) {
-          toast(esc(p.name) + ' 翻阅了你辑录的《' + c.card.name + '》：你 +' + fee + ' 声名。', 2800);
-        }
+        toast(p.name + ' 翻阅 ' + owner.name + ' 辑录的《' + c.card.name + '》：付 ' + fee +
+          ' 墨，' + owner.name + ' 声名 +' + fee + '。', 2800);
       } else {
         p.fame = Math.max(0, p.fame - BOARD.debtPenalty);
         log(p.name + ' 想参看《' + c.card.name + '》却墨不足（需 ' + fee + '），空手而过，声名 −' +
           BOARD.debtPenalty + '。', 'bad');
-        if (p.idx === S.myIdx) {
-          toast('墨不够（需 ' + fee + '），空手而过：声名 −' + BOARD.debtPenalty + '。', 2800);
-        } else if (owner.idx === S.myIdx) {
-          toast(p.name + ' 付不起 ' + fee + ' 墨，空手而过：他 −' + BOARD.debtPenalty + ' 声名。', 2600);
-        }
+        toast(p.name + ' 付不起 ' + owner.name + ' 的《' + c.card.name + '》（需 ' + fee +
+          ' 墨），空手而过：声名 −' + BOARD.debtPenalty + '。', 2800);
         if (p.fame <= 0) bankrupt(p);
       }
       render(); later(nextTurn, 480); return;
@@ -439,7 +427,7 @@
   function buy() {
     var p = cur(), c = S.cells[p.pos];
     var ev = canBuy(p, c.card);
-    if (!ev) { toast('墨不足或谱已满'); return; }
+    if (!ev) { toast(p.name + '：墨不足或谱已满，这一首辑录不了'); return; }
     p.ink -= ev.cost;
     if (ev.free) { p.freeNext = false; log(p.name + ' 免墨辑录。'); }
     p.fame += ev.fame;
@@ -623,8 +611,10 @@
     var wrap = $('#bp-players');
     if (!wrap) return;
     wrap.innerHTML = S.players.map(function (p) {
-      return '<div class="bp-p' + (p.idx === S.turn && !S.over ? ' now' : '') + '">' +
-        '<span class="nm">' + esc(p.name) + (p.isAI ? '<i>机</i>' : '') + '</span>' +
+      var now = p.idx === S.turn && !S.over;
+      return '<div class="bp-p' + (now ? ' now' : '') + '">' +
+        '<span class="nm">' + esc(p.name) + (p.isAI ? '<i>机</i>' : '') +
+          (now ? '<i class="cur">此刻</i>' : '') + '</span>' +
         '<span class="st">声名 <b>' + p.fame + '</b></span>' +
         '<span class="st">墨 <b>' + p.ink + '</b></span>' +
         '<span class="st">谱 <b>' + p.hand.length + '</b></span>' +
@@ -687,9 +677,9 @@
   function renderSide() {
     var wrap = $('#bp-side');
     if (!wrap || !S.players.length) return;
-    // 有两个以上真人时，看板跟着当前出手的人走；否则固定显示「你」
+    // 有两个以上真人时，看板始终跟着当前出手的人走；否则固定显示「你」
     var humans = S.players.filter(function (x) { return !x.isAI; }).length;
-    var viewIdx = (humans > 1 && !cur().isAI) ? S.turn : S.myIdx;
+    var viewIdx = humans > 1 ? S.turn : S.myIdx;
     var p = S.players[viewIdx] || cur();
     var need = BOARD.groupSize;
 
@@ -724,8 +714,10 @@
     var total = eraDone + themeDone + staffDone;
 
     wrap.innerHTML =
-      '<div class="side-t">成 组 <em class="' + (total ? 'hit' : '') + '">' + esc(p.name) +
-        ' · 已立 ' + total + ' 组</em></div>' +
+      '<div class="side-t side-who">' +
+        (viewIdx === S.turn && !S.over ? '<b class="who-flag">当前出手</b>' : '') +
+        '<b class="who-name">' + esc(p.name) + '</b>' +
+        '<em class="' + (total ? 'hit' : '') + '">已立 ' + total + ' 组</em></div>' +
       '<div class="side-t sub-t">年 代 段 <em>' + eraDone + '/' + eras.length + '</em></div>' +
       '<div class="side-list">' + eraPills + '</div>' +
       '<div class="side-t sub-t">主 题 <em>' + themeDone + '/4</em></div>' +
@@ -746,19 +738,29 @@
     var info = $('#bp-info');
     if (!btn) return;
     var p = cur();
+    var isMe = p.idx === S.myIdx;
     var mine = !S.over && !p.isAI && S.phase === 'idle' && !S.paused;
     btn.disabled = S.over || p.isAI || S.phase !== 'idle';
     btn.classList.toggle('hot', mine);
-    btn.querySelector('.t').textContent = S.over ? '终 局' : (p.isAI ? p.name + ' 行棋' : '掷 骰');
+    btn.querySelector('.t').textContent = S.over ? '终 局'
+      : (p.isAI || !isMe ? p.name + ' 行棋' : '掷 骰');
     var sub = btn.querySelector('.d');
-    if (sub) sub.textContent = mine ? '轮到你 · 点此行棋' : ('声名先到 ' + BOARD.fameTarget);
+    if (sub) sub.textContent = mine
+      ? (isMe ? '轮到你 · 点此行棋' : '轮到 ' + p.name + ' · 点此行棋')
+      : (p.isAI ? '轮到 ' + p.name + ' · 正在思量' : '轮到 ' + p.name);
 
     var gb = $('#bp-gather');
     if (gb) gb.disabled = S.over || p.isAI || S.phase !== 'idle';
 
-    // 引导只在自己该动的时候出现；棋盘全暗时它就是「该点这里」的指路牌
+    // 引导只在该动的时候出现；棋盘全暗时它就是「该点这里」的指路牌
     var coach = $('#bp-coach');
-    if (coach) coach.hidden = !mine || !!document.querySelector('.tut-layer');
+    if (coach) {
+      coach.hidden = !mine || !!document.querySelector('.tut-layer');
+      if (!coach.hidden) {
+        var cb = coach.querySelector('b');
+        if (cb) cb.textContent = isMe ? '轮到你' : '轮到 ' + p.name;
+      }
+    }
 
     // 列数按钮的选中态
     Array.prototype.forEach.call(document.querySelectorAll('#bp-cols button'), function (b) {
@@ -800,9 +802,12 @@
           '<div class="bc-ev">' + esc(last.d) + '</div></div>'
         : '<div class="bp-hint">' + (S.over ? '' :
           (p.isAI
-            ? '等 <b>' + esc(p.name) + '</b> 行棋……'
-            : '<b>轮到你</b> —— 点下方朱色「掷骰」行棋；缺墨可点「采风」得 ' +
-              BOARD.gatherInk + ' 墨。<br><span style="color:var(--seal)">已翻开的歌格：点开档案，右键 / 长按看解析。</span>')) + '</div>');
+            ? '轮到 <b>' + esc(p.name) + '</b> 行棋……'
+            : (isMe
+              ? '<b>轮到你</b> —— 点下方朱色「掷骰」行棋；缺墨可点「采风」得 ' +
+                BOARD.gatherInk + ' 墨。<br><span style="color:var(--seal)">已翻开的歌格：点开档案，右键 / 长按看解析。</span>'
+              : '轮到 <b>' + esc(p.name) + '</b> —— 请他点下方朱色「掷骰」行棋；缺墨可点「采风」得 ' +
+                BOARD.gatherInk + ' 墨。'))) + '</div>');
     }
 
     var logBox = $('#bp-log');
@@ -828,9 +833,10 @@
         '<span>难度 <b>' + diffCn + '</b></span><span><b>' + S.turns + '</b> 手</span>' +
         '<span>终局 <b>声名 ' + w.fame + '</b></span>';
     }
+    var meName = me.name === '你' ? '你' : esc(me.name);
     $('#bp-result-sub').innerHTML = iWin
-      ? '你以声名 <b>' + w.fame + '</b> 先成一家，行 ' + (w.lap) + ' 卷。'
-      : '<b>' + esc(w.name) + '</b> 以声名 <b>' + w.fame + '</b> 先成一家；你 ' + me.fame + ' 声名，行 ' + me.lap + ' 卷。';
+      ? '<b>' + meName + '</b> 以声名 <b>' + w.fame + '</b> 先成一家，行 ' + (w.lap) + ' 卷。'
+      : '<b>' + esc(w.name) + '</b> 以声名 <b>' + w.fame + '</b> 先成一家；' + meName + ' ' + me.fame + ' 声名，行 ' + me.lap + ' 卷。';
     if (window.SBApp && SBApp.showBoardEnd) { SBApp.showBoardEnd(); return; }
     $('#modal-bp-result').classList.add('open');
   }

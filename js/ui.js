@@ -152,15 +152,24 @@
 
   /** 非「我」席位取一个不重复的人名，避免出现两个「你」 */
   function humanDefaultName(pos) {
-    var used = {};
-    App.seats.forEach(function (x) { if (x.name) used[x.name] = 1; });
-    var pool = ['玩家二', '玩家三', '玩家四'];
-    for (var i = 0; i < pool.length; i++) if (!used[pool[i]]) return pool[i];
-    return HUMAN_NAMES[pos] || ('玩家' + (pos + 1));
+    // 多人局一律用编号：玩家1、玩家2、玩家3…（单人局才叫「你」）
+    if (App.count > 1) return '玩家' + (pos + 1);
+    return HUMAN_NAMES[0];
+  }
+
+  /** 多人局不叫「你」：没手动改过的名字，按出手位统一编成「玩家N」 */
+  function relabelSeats() {
+    var multi = App.count > 1;
+    App.seats.forEach(function (s, i) {
+      if (s.manual) return;
+      if (s.isAI) s.name = AI_NAMES[i - 1] || '墨客';
+      else s.name = multi ? ('玩家' + (i + 1)) : HUMAN_NAMES[0];
+    });
   }
 
   function buildSeats() {
     if (!App.seats.length) App.seats = defaultSeats();
+    relabelSeats();
     keepMeVisible();
     var wrap = $('#seats');
     wrap.innerHTML = '';
@@ -175,7 +184,7 @@
 
       var inp = row.querySelector('input');
       inp.addEventListener('input', function () {
-        st.name = inp.value.trim() || (st.isAI ? (AI_NAMES[pos - 1] || '墨客') : (st.isMe ? HUMAN_NAMES[0] : humanDefaultName(pos)));
+        st.name = inp.value.trim() || (st.isAI ? (AI_NAMES[pos - 1] || '墨客') : humanDefaultName(pos));
         st.manual = true;
       });
 
@@ -184,7 +193,7 @@
         if (st.isMe) { toast('这一席是你自己，不能改成「机」'); return; }
         st.isAI = !st.isAI;
         if (!st.manual) {
-          st.name = st.isAI ? (AI_NAMES[pos - 1] || '墨客') : (st.isMe ? HUMAN_NAMES[0] : humanDefaultName(pos));
+          st.name = st.isAI ? (AI_NAMES[pos - 1] || '墨客') : humanDefaultName(pos);
           inp.value = st.name;
         }
         kb.dataset.k = st.isAI ? 'ai' : 'human';
@@ -259,6 +268,13 @@
     return g && !g.state.over && !App.busy && !curPlayer().isAI;
   }
 
+  /** 回合提示：轮到谁就说谁的名字；只有当席名字就是「你」时才说「轮到你」 */
+  function turnWord(p) {
+    if (!p) return '';
+    if (p.isAI) return '轮到 ' + p.name + ' · 正在思量';
+    return p.name === HUMAN_NAMES[0] ? '轮到你' : '轮到 ' + p.name;
+  }
+
   function renderAll() {
     var g = App.game;
     if (!g) return;
@@ -268,16 +284,16 @@
     var eraNote = $('#era-note');
     if (eraNote) eraNote.textContent = g.config.eraTarget + ' 段 · ' +
       g.config.eraDoubleSegs + ' 段双收 · 跨 ' + g.config.eraMinGroups + ' 题';
-    $('#turn-label').textContent = over ? '终局' : (curPlayer().isAI ? curPlayer().name + ' 正在思量' : '轮到 ' + curPlayer().name);
+    $('#turn-label').textContent = over ? '终局' : turnWord(curPlayer());
 
     // 记分
     $('#scorebar').innerHTML = g.state.players.map(function (p, i) {
       return '<div class="sc' + (i === cur && !over ? ' now' : '') + '">' + esc(p.name) + '<b>' + p.fame + '</b></div>';
     }).join('');
 
-    // 热座（≥2 个真人）：面板跟着当前出手的人走，否则固定显示「我」
+    // 热座（≥2 个真人）：面板始终跟着当前出手的人走（AI 回合也跟随），否则固定显示「我」
     var humans = g.state.players.filter(function (p) { return !p.isAI; }).length;
-    App.viewIdx = (humans > 1 && !curPlayer().isAI) ? cur : App.myIdx;
+    App.viewIdx = humans > 1 ? cur : App.myIdx;
 
     // 对手
     var myIdx = App.viewIdx;
@@ -314,8 +330,9 @@
 
     var head = el('div', 'zone-head');
     head.innerHTML =
-      '<span class="who">' + esc(p.name) +
-        (p.idx === g.state.current && !g.state.over ? '<span class="now-tag">此刻</span>' : '') +
+      '<span class="who">' +
+        (p.idx === g.state.current && !g.state.over ? '<b class="who-flag">当前出手</b>' : '') +
+        '<b class="who-name">' + esc(p.name) + '</b>' +
         (p.isAI ? '<span class="now-tag" style="color:var(--ink-4);border-color:var(--line)">机</span>' : '') +
       '</span>' +
       '<span class="chip ink">墨 <b>' + p.ink + '</b></span>' +
@@ -659,9 +676,10 @@
         '<span>终局 <b>' + byLabel + '</b></span>';
     }
     $('#end-title').textContent = iWin ? '谱 成' : '谱 未 成';
+    var meTag = me.name === HUMAN_NAMES[0] ? '你' : '<b>' + esc(me.name) + '</b>';
     $('#end-sub').innerHTML = iWin
-      ? '你以<b>' + byLabel + '</b>先成一家。第 ' + g.state.round + ' 轮，声名 ' + me.fame + '，谱中 ' + me.hand.length + ' 首。'
-      : '<b>' + esc(winP.name) + '</b> 以<b>' + byLabel + '</b>先成一家。第 ' + g.state.round + ' 轮，你声名 ' + me.fame + '，谱中 ' + me.hand.length + ' 首。';
+      ? meTag + '以<b>' + byLabel + '</b>先成一家。第 ' + g.state.round + ' 轮，声名 ' + me.fame + '，谱中 ' + me.hand.length + ' 首。'
+      : '<b>' + esc(winP.name) + '</b> 以<b>' + byLabel + '</b>先成一家。第 ' + g.state.round + ' 轮，' + meTag + '声名 ' + me.fame + '，谱中 ' + me.hand.length + ' 首。';
 
     var hw = $('#end-hand'); hw.innerHTML = '';
     me.hand.forEach(function (c) {
@@ -923,8 +941,8 @@
       '<p><b>立派按「每两首」算。</b>同一位创作者在你谱里有 2 首＝1 派，有 4 首＝2 派。只算词人、曲师两类角色，同一张牌可以同时算进两派。' +
         '<br>例：河图 2 首（1 派）、Finale 4 首（2 派）、银临 2 首（1 派）——合计 4 派。' +
         '<br><b>张数门槛</b>：二人、三人局谱里至少 <b>10</b> 首，四人局 <b>11</b> 首。' +
-        '但如果某一位词人或曲师已经在你谱里出现 <b>3</b> 首（也就是这一派已有 3 张），这条张数要求就免了——' +
-        '此时 8 张牌凑出 5 派也算立派成功，进度条会标「深派免」。</p>',
+        '只要谱里<b>任意一位</b>词人或曲师已经出现 <b>3</b> 首（有一派够深），这条门槛就整条免除——' +
+        '不必每一派都凑到 3 张。<br>免除后 8 张牌凑出 5 派也算立派成功，进度条会标「深派免」。</p>',
       '<div class="note">' +
         '<b>跨角色也算。</b>甲是 A 的歌的词人，又是 B 的歌的曲师——A 与 B 合起来可以算甲的一派。<br>' +
         '<b>但同一首歌里词、曲都是甲，只算一张</b>，不能自己跟自己成组。' +
@@ -1031,6 +1049,13 @@
     window.scrollTo(0, 0);
   }
 
+  /** 开局阵容的名字兜底：多人局统一「玩家N」，单人局才是「你」 */
+  function rosterName(s, i) {
+    if (s.name) return s.name;
+    if (s.isAI) return AI_NAMES[i - 1] || '墨客';
+    return App.count > 1 ? ('玩家' + (i + 1)) : HUMAN_NAMES[0];
+  }
+
   function startGame() {
     App.lastDiff = App.difficulty;
     if (tut.on && tut.phase === 'intro') {
@@ -1038,7 +1063,7 @@
       return;
     }
     var roster = App.seats.slice(0, App.count).map(function (s, i) {
-      return { name: s.name || (i === 0 ? '你' : '墨客'), isAI: !!s.isAI, isMe: !!s.isMe };
+      return { name: s.name || rosterName(s, i), isAI: !!s.isAI, isMe: !!s.isMe };
     });
 
     if (App.mode === 'board') { launchBoard(roster, {}); return; }
@@ -1047,7 +1072,7 @@
     if (roster.filter(function (r) { return r.isAI; }).length) {
       toast('点歌肆里的一张牌辑录；付不起就点「采风」。右键或长按卡牌可读解析。', 3400);
     } else {
-      toast('热座局：轮到谁，谁的名字旁会出现「此刻」。', 3200);
+      toast('热座局：轮到谁，底部那一栏就是谁的谱，名字前标着朱色「当前出手」。', 3400);
     }
   }
 
@@ -1065,8 +1090,11 @@
     window.SBBoard.start(roster, { firstSeat: 0, tutorial: !!opts.tutorial });
     if (opts.tutorial && !opts.manual) setTimeout(function () { tutBoardFlow(); tutShow(3); }, 520);
     if (!opts.tutorial && !opts.manual) {
-      toast('轮到你时点「掷骰」行棋；缺墨可「采风」换 4 墨。声名先到 ' +
-        window.SBBoard.BOARD.fameTarget + ' 者胜。', 3600);
+      var hotseat = roster.filter(function (r) { return !r.isAI; }).length > 1;
+      toast(hotseat
+        ? '热座局：轮到谁，顶部那个人亮起、姓名前标「当前出手」，右侧看板就是他的。'
+        : '轮到你时点「掷骰」行棋；缺墨可「采风」换 4 墨。声名先到 ' +
+          window.SBBoard.BOARD.fameTarget + ' 者胜。', 3600);
     }
   }
 
@@ -1194,7 +1222,7 @@
     var bpeA = $('#bpe-again');
     if (bpeA) bpeA.addEventListener('click', function () {
       var roster = App.seats.slice(0, App.count).map(function (s, i) {
-        return { name: s.name || (i === 0 ? '你' : '墨客'), isAI: !!s.isAI, isMe: !!s.isMe };
+        return { name: s.name || rosterName(s, i), isAI: !!s.isAI, isMe: !!s.isMe };
       });
       window.SBBoard.start(roster, { firstSeat: 0 });
       showView('board');
@@ -1255,7 +1283,7 @@
     if (ba) ba.addEventListener('click', function () {
       closeModal($('#modal-bp-result'));
       var roster = App.seats.slice(0, App.count).map(function (s, i) {
-        return { name: s.name || (i === 0 ? '你' : '墨客'), isAI: !!s.isAI, isMe: !!s.isMe };
+        return { name: s.name || rosterName(s, i), isAI: !!s.isAI, isMe: !!s.isMe };
       });
       window.SBBoard.start(roster, { firstSeat: 0 });
     });
@@ -1659,9 +1687,10 @@
     var diffCn = { easy: '初涉', normal: '熟手', hard: '老吏' }[B.cfg.difficulty || 'normal'] || '熟手';
 
     $('#bpe-title').textContent = iWin ? '路 成' : '路 未 成';
+    var bpeMe = me.name === HUMAN_NAMES[0] ? '你' : esc(me.name);
     $('#bpe-sub').innerHTML = iWin
-      ? '你以声名 <b>' + me.fame + '</b> 先成一家，行 ' + me.lap + ' 卷。'
-      : '<b>' + esc(w.name) + '</b> 以声名 <b>' + w.fame + '</b> 先成一家；你 ' + me.fame + ' 声名，行 ' + me.lap + ' 卷。';
+      ? '<b>' + bpeMe + '</b> 以声名 <b>' + me.fame + '</b> 先成一家，行 ' + me.lap + ' 卷。'
+      : '<b>' + esc(w.name) + '</b> 以声名 <b>' + w.fame + '</b> 先成一家；' + bpeMe + ' ' + me.fame + ' 声名，行 ' + me.lap + ' 卷。';
     $('#bpe-meta').innerHTML =
       '<span>玩法 <b>词路</b></span><span><b>' + S.players.length + '</b> 人</span>' +
       '<span>难度 <b>' + diffCn + '</b></span><span><b>' + S.turns + '</b> 手</span>' +
@@ -1739,7 +1768,7 @@
           p: Math.min(1, Math.min(th.count / cfg.themeSize, (th.eras || 0) / (cfg.themeEras || 1))) }
       ],
       section: '四 条 线',
-      songs: me.hand.map(function (c) { return c.name; }).slice(0, 8),
+      songs: me.hand.map(function (c) { return c.name; }),
       note: '声名 ' + me.fame + ' · 谱中 ' + me.hand.length + ' 首'
     };
   }
@@ -1768,7 +1797,7 @@
       ],
       section: '战 绩',
       plainRows: true,
-      songs: me.hand.map(function (c) { return c.name; }).slice(0, 8),
+      songs: me.hand.map(function (c) { return c.name; }),
       note: '共 ' + S.players.length + ' 家 · 声名先到 ' + B.BOARD.fameTarget
     };
   }
@@ -1869,7 +1898,7 @@
         rrect(c, M - 10, y - 22, W - M * 2 + 20, 40, 2); c.fill();
       }
       c.fillStyle = p.me ? '#9e3d32' : '#2f2a24'; c.font = '21px ' + SERIF;
-      c.fillText(p.name + (p.me ? '（你）' : ''), M, y + 4);
+      c.fillText(p.name, M, y + 4);   // 多人局名字已是「玩家N」，不再加后缀；「我」这一行用朱色与淡底区分
       c.textAlign = 'right';
       c.font = '15px ' + SANS; c.fillStyle = '#8a7a68';
       c.fillText('谱中 ' + p.hand + ' 首', W - M - 104, y + 3);
@@ -1934,7 +1963,7 @@
     var probe = document.createElement('canvas');
     probe.width = W; probe.height = 1400;
     var bottom = paintShare(probe.getContext('2d'), spec, 1400);
-    var H = Math.max(820, Math.min(1500, bottom + 120));
+    var H = Math.max(820, Math.min(2400, bottom + 120));
     var cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     var c = cv.getContext('2d');
@@ -1960,8 +1989,11 @@
     img.src = url;
     var a = $('#share-dl');
     var d = new Date();
+    var pad = function (n) { return ('0' + n).slice(-2); };
+    var stamp = d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+      '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
     a.href = url;
-    a.download = '三百首_' + spec.mode + '_' + d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2) + '.png';
+    a.download = '三百首_' + spec.mode + '_' + stamp + '.png';
     openModal('modal-share');
   }
 
