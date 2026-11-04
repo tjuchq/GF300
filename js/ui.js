@@ -168,13 +168,20 @@
     return humanCount() > 1 ? seatLabel(pos) : HUMAN_NAMES[0];
   }
 
-  /** 没手动改过的名字：真人多时编成「玩家X」，只有一个真人时叫「你」，其余按位次叫墨客 */
+  /** 机的名字按「第几个机」从前往后排：一机墨客、二机墨客+书客、三机再加评话人 */
+  function aiLabel(seq) { return AI_NAMES[seq] || ('墨客' + (seq + 1)); }
+
+  /** 没手动改过的名字：真人多时编成「玩家X」，只有一个真人时叫「你」，机按序号取名 */
   function relabelSeats() {
     var multi = humanCount() > 1;
+    var aiSeq = 0;
     App.seats.forEach(function (s, i) {
-      if (s.manual) return;
-      if (s.isAI) s.name = AI_NAMES[i - 1] || '墨客';
-      else s.name = multi ? seatLabel(i) : HUMAN_NAMES[0];
+      if (s.isAI) {
+        if (!s.manual) s.name = aiLabel(aiSeq);
+        aiSeq++;                       // 手动命名的机也占一个位次，避免后面的重名
+        return;
+      }
+      if (!s.manual) s.name = multi ? seatLabel(i) : HUMAN_NAMES[0];
     });
   }
 
@@ -195,7 +202,9 @@
 
       var inp = row.querySelector('input');
       inp.addEventListener('input', function () {
-        st.name = inp.value.trim() || (st.isAI ? (AI_NAMES[pos - 1] || '墨客') : humanDefaultName(pos));
+        st.name = inp.value.trim() || (st.isAI
+          ? aiLabel(App.seats.slice(0, pos).filter(function (x) { return x.isAI; }).length)
+          : humanDefaultName(pos));
         st.manual = true;
       });
 
@@ -1073,7 +1082,10 @@
   /** 开局阵容的名字兜底：真人多于一个用「玩家X」，只有一个真人时才叫「你」 */
   function rosterName(s, i) {
     if (s.name) return s.name;
-    if (s.isAI) return AI_NAMES[i - 1] || '墨客';
+    if (s.isAI) {
+      var seq = App.seats.slice(0, i).filter(function (x) { return x.isAI; }).length;
+      return aiLabel(seq);
+    }
     return humanCount() > 1 ? seatLabel(i) : HUMAN_NAMES[0];
   }
 
