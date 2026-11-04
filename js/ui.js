@@ -116,6 +116,13 @@
       [Object.keys(creators).length, '位创作者']
     ].map(function (x) { return '<div class="st"><b>' + x[0] + '</b><span>' + x[1] + '</span></div>'; }).join('');
 
+    var libTotal = $('#lib-total');
+    if (libTotal) libTotal.textContent = cards.length + ' 首 · 点开看解析';
+    var notesTotal = $('#notes-total');
+    if (notesTotal) {
+      var nn = cards.filter(function (c) { return (c.noteCount || (c.notes && c.notes.length)) > 0; }).length;
+      notesTotal.textContent = nn + ' 首 · 只读词人与笺注';
+    }
     $('#src-meta').textContent = '· 数据版本 ' + (meta.generatedAt || '未知') + (App.usingOverride ? '（本地导入版）' : '');
     updateResume();
     buildSeats();
@@ -835,7 +842,8 @@
   }
 
   /* ---------------- 卡牌详情 ---------------- */
-  function openCard(c, pv) {
+  /** brief=true 时只给「词人 + 笺注」，供笺注一览用 */
+  function openCard(c, pv, brief) {
     var g = App.game;
     var tags = [];
     if (c.isSpecial) tags.push('<span class="tag" style="color:var(--seal);border-color:rgba(158,61,50,.35)">特别篇</span>');
@@ -844,7 +852,15 @@
     (c.subjects || []).forEach(function (v) { tags.push('<span class="tag">题材 ' + esc(v) + '</span>'); });
     if (c.batch) tags.push('<span class="tag">批次 ' + esc(c.batch) + '</span>');
     if (c.dateSource) tags.push('<span class="tag">日期考证 ' + esc(c.dateSource) + '</span>');
-    if (c.available && c.available.length) tags.push('<span class="tag">' + esc(c.available.join('/')) + '</span>');
+    if (c.available && c.available.length) {
+      // 平台标签固定顺序：5sing → 网易云 → QQ音乐 → 酷狗
+      var PLAT = ['5sing', '网易云', 'QQ音乐', '酷狗'];
+      var av = c.available.slice().sort(function (x, y) {
+        var ix = PLAT.indexOf(x), iy = PLAT.indexOf(y);
+        return (ix < 0 ? 99 : ix) - (iy < 0 ? 99 : iy);
+      });
+      tags.push('<span class="tag">' + esc(av.join('/')) + '</span>');
+    }
 
     function row(k, v) { return v ? '<div class="cd-row"><div class="k">' + k + '</div><div class="v">' + v + '</div></div>' : ''; }
 
@@ -864,6 +880,15 @@
         '</div>';
     }
 
+    if (brief) {
+      $('#card-detail').innerHTML =
+        '<div class="cd-name">' + esc(c.name) + '</div>' +
+        '<div class="cd-rows">' + row('词人', esc(join(c.lyricist))) + '</div>' +
+        notes;
+      openModal('modal-card');
+      return;
+    }
+
     $('#card-detail').innerHTML =
       '<div class="cd-name">' + esc(c.name) + '</div>' +
       '<div class="cd-sub">' + (c.date || c.year) + '　' + esc(c.type || '') + '</div>' +
@@ -873,7 +898,6 @@
         row('编曲', esc(join(c.arranger))) +
         row('演唱', esc(join(c.singer))) +
         row('调校', esc(join(c.tuner))) +
-        row('班底', c.staff && c.staff.length ? esc(join(c.staff)) : '') +
         row('标签', tags.join('') || '—') +
       '</div>' + evalHtml + notes;
     openModal('modal-card');
@@ -890,6 +914,34 @@
     renderLib();
     openModal('modal-cards');
   }
+  /** 笺注一览：只列有笺注的歌，点开只看词人与笺注 */
+  function openNotes() {
+    renderNotes();
+    openModal('modal-notes');
+  }
+  function renderNotes() {
+    var q = ($('#notes-search').value || '').trim().toLowerCase();
+    var all = App.data.cards.filter(function (c) { return (c.noteCount || (c.notes && c.notes.length)) > 0; });
+    var list = all.filter(function (c) {
+      if (!q) return true;
+      return [c.name, join(c.lyricist), join(c.composer)].join(' ').toLowerCase().indexOf(q) >= 0;
+    });
+    $('#notes-count').textContent = list.length + ' 首';
+    var grid = $('#notes-grid');
+    grid.innerHTML = list.slice(0, 400).map(function (c) {
+      var n = c.noteCount || (c.notes ? c.notes.length : 0);
+      return '<div class="lib-item" data-id="' + esc(c.id) + '"><b>' + esc(c.name) + '</b><span>' +
+        c.year + ' · ' + esc(join(c.lyricist) || '佚名') + ' · 注 ' + n + '</span></div>';
+    }).join('') + (list.length > 400
+      ? '<div style="grid-column:1/-1;font-size:11px;color:var(--ink-4)">仅显示前 400 条，请用搜索缩小范围</div>' : '');
+    $$('.lib-item', grid).forEach(function (d) {
+      d.addEventListener('click', function () {
+        var c = App.data.cards.filter(function (x) { return x.id === d.dataset.id; })[0];
+        if (c) openCard(c, null, true);
+      });
+    });
+  }
+
   function renderLib() {
     var q = ($('#lib-search').value || '').trim().toLowerCase();
     var tf = $('#lib-filter').value;
@@ -1275,6 +1327,8 @@
       var b = $('#' + id); if (b) b.addEventListener('click', function () { renderDataPanel(); openModal('modal-data'); });
     });
     var bc = $('#btn-cards-intro'); if (bc) bc.addEventListener('click', openLibrary);
+    var bn = $('#btn-notes-intro'); if (bn) bn.addEventListener('click', openNotes);
+    var ns = $('#notes-search'); if (ns) ns.addEventListener('input', renderNotes);
 
     $('#btn-home').addEventListener('click', function () { returnHome('deck'); });
     var brs = $('#btn-resume');
