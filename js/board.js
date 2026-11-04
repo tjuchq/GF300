@@ -194,6 +194,11 @@
 
   function cur() { return S.players[S.turn] || S.players[0]; }
 
+  /** 回合提示：单人局的席位名就是「你」；多人局一律叫名字（玩家一 / 玩家二…） */
+  function turnWord(p) {
+    return p.name === '你' ? '轮到你' : '轮到 ' + p.name;
+  }
+
   /* 重开一局后，上一局排好的定时器必须作废，否则会在新局上乱动 */
   function later(fn, ms) {
     var g = S.gen;
@@ -201,16 +206,8 @@
   }
 
   /** 该玩家在某个维度上占了几格（只看已辑录的歌格） */
-  /** 班底口径与词宗立派一致：只算词人与曲师（同一张里词曲同人只算一次） */
-  function staffOf(card) {
-    var set = {}, out = [];
-    ['lyricist', 'composer'].forEach(function (k) {
-      (card[k] || []).forEach(function (v) {
-        if (v && !set[v]) { set[v] = 1; out.push(v); }
-      });
-    });
-    return out;
-  }
+  /** 班底口径与词宗立派一致，直接复用引擎的实现（只算词人与曲师） */
+  var staffOf = E.staffOf;
 
   function countDim(playerIdx, dim, val) {
     var n = 0;
@@ -738,15 +735,14 @@
     var info = $('#bp-info');
     if (!btn) return;
     var p = cur();
-    var isMe = p.idx === S.myIdx;
     var mine = !S.over && !p.isAI && S.phase === 'idle' && !S.paused;
     btn.disabled = S.over || p.isAI || S.phase !== 'idle';
     btn.classList.toggle('hot', mine);
     btn.querySelector('.t').textContent = S.over ? '终 局'
-      : (p.isAI || !isMe ? p.name + ' 行棋' : '掷 骰');
+      : (p.name !== '你' ? p.name + ' 行棋' : '掷 骰');
     var sub = btn.querySelector('.d');
     if (sub) sub.textContent = mine
-      ? (isMe ? '轮到你 · 点此行棋' : '轮到 ' + p.name + ' · 点此行棋')
+      ? turnWord(p) + ' · 点此行棋'
       : (p.isAI ? '轮到 ' + p.name + ' · 正在思量' : '轮到 ' + p.name);
 
     var gb = $('#bp-gather');
@@ -758,7 +754,7 @@
       coach.hidden = !mine || !!document.querySelector('.tut-layer');
       if (!coach.hidden) {
         var cb = coach.querySelector('b');
-        if (cb) cb.textContent = isMe ? '轮到你' : '轮到 ' + p.name;
+        if (cb) cb.textContent = turnWord(p);
       }
     }
 
@@ -803,11 +799,8 @@
         : '<div class="bp-hint">' + (S.over ? '' :
           (p.isAI
             ? '轮到 <b>' + esc(p.name) + '</b> 行棋……'
-            : (isMe
-              ? '<b>轮到你</b> —— 点下方朱色「掷骰」行棋；缺墨可点「采风」得 ' +
-                BOARD.gatherInk + ' 墨。<br><span style="color:var(--seal)">已翻开的歌格：点开档案，右键 / 长按看解析。</span>'
-              : '轮到 <b>' + esc(p.name) + '</b> —— 请他点下方朱色「掷骰」行棋；缺墨可点「采风」得 ' +
-                BOARD.gatherInk + ' 墨。'))) + '</div>');
+            : '<b>' + turnWord(p) + '</b> —— 点下方朱色「掷骰」行棋；缺墨可点「采风」得 ' +
+              BOARD.gatherInk + ' 墨。<br><span style="color:var(--seal)">已翻开的歌格：点开档案，右键 / 长按看解析。</span>')) + '</div>');
     }
 
     var logBox = $('#bp-log');

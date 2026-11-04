@@ -150,11 +150,11 @@
     }
   }
 
-  /** 非「我」席位取一个不重复的人名，避免出现两个「你」 */
+  /** 座位编号：多人局一律「玩家一 / 玩家二…」（单人局才叫「你」） */
+  function seatLabel(i) { return '玩家' + (CN[i] || (i + 1)); }
+
   function humanDefaultName(pos) {
-    // 多人局一律用编号：玩家1、玩家2、玩家3…（单人局才叫「你」）
-    if (App.count > 1) return '玩家' + (pos + 1);
-    return HUMAN_NAMES[0];
+    return App.count > 1 ? seatLabel(pos) : HUMAN_NAMES[0];
   }
 
   /** 多人局不叫「你」：没手动改过的名字，按出手位统一编成「玩家N」 */
@@ -163,7 +163,7 @@
     App.seats.forEach(function (s, i) {
       if (s.manual) return;
       if (s.isAI) s.name = AI_NAMES[i - 1] || '墨客';
-      else s.name = multi ? ('玩家' + (i + 1)) : HUMAN_NAMES[0];
+      else s.name = multi ? seatLabel(i) : HUMAN_NAMES[0];
     });
   }
 
@@ -1053,7 +1053,7 @@
   function rosterName(s, i) {
     if (s.name) return s.name;
     if (s.isAI) return AI_NAMES[i - 1] || '墨客';
-    return App.count > 1 ? ('玩家' + (i + 1)) : HUMAN_NAMES[0];
+    return App.count > 1 ? seatLabel(i) : HUMAN_NAMES[0];
   }
 
   function startGame() {
