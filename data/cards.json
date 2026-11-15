@@ -3,8 +3,8 @@
   "schemaVersion": 1,
   "title": "三百首·词宗",
   "source": "飞书多维表格「三百首」+「解析」",
-  "generatedAt": "2026-11-02 15:01:33",
-  "songsCount": 377,
+  "generatedAt": "2026-11-15 12:35:12",
+  "songsCount": 378,
   "annotationsCount": 278,
   "eras": [
    {
@@ -23025,6 +23025,66 @@
    "isVirtual": false,
    "isSpecial": false,
    "batch": "4-1",
+   "dateSource": "网易云",
+   "platforms": {
+    "5sing": "无",
+    "qg": "有",
+    "qq": "有",
+    "wyy": "有"
+   },
+   "available": [
+    "酷狗",
+    "QQ音乐",
+    "网易云"
+   ],
+   "era": 5,
+   "notes": [],
+   "noteCount": 0,
+   "hasNote": false,
+   "extra": {}
+  },
+  {
+   "id": "reczz28WqJUfdt6N",
+   "name": "嘉定二年冬",
+   "year": 2026,
+   "date": "2026-11-07",
+   "type": "史同-人物",
+   "typeGroup": "史同",
+   "subjects": [
+    "陆游"
+   ],
+   "lyricist": [
+    "慕清明"
+   ],
+   "composer": [
+    "少司命",
+    "潇梦临"
+   ],
+   "arranger": [
+    "李大白"
+   ],
+   "singer": [
+    "少司命"
+   ],
+   "tuner": [],
+   "staff": [
+    "李大白",
+    "慕清明",
+    "少司命",
+    "潇梦临"
+   ],
+   "duos": [
+    "李大白慕清明",
+    "李大白少司命",
+    "慕清明少司命",
+    "李大白潇梦临",
+    "慕清明潇梦临",
+    "少司命潇梦临"
+   ],
+   "voicebank": [],
+   "isVirtual": false,
+   "isSpecial": false,
+   "batch": "6",
    "dateSource": "网易云",
    "platforms": {
     "5sing": "无",
