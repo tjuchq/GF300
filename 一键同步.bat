@@ -1,138 +1,163 @@
 @echo off
-chcp 65001 >nul
+chcp 936 >nul
 setlocal enabledelayedexpansion
-title åŒæ­¥åˆ° GitHub Â· GF300
+set "GIT_PAGER=cat"
+set "PAGER=cat"
+title Í¬²½µ½ GitHub - GF300
 cd /d "%~dp0"
 
-set API_PUSH=D:/workbuddyspace/qita/å·¥å…·/01-ä¸‰ç™¾é¦–æ¸¸æˆ/push_api.py
+set "API_PUSH=D:/workbuddyspace/qita/¹¤¾ß/01-Èı°ÙÊ×ÓÎÏ·/push_api.py"
 
 echo ==========================================
-echo    åŒæ­¥åˆ° GitHub Â· tjuchq/GF300
+echo    Í¬²½µ½ GitHub   tjuchq/GF300
 echo ==========================================
 echo.
 
-:: ---------- 0. æ‰¾ gitï¼ˆåŒå‡»æ—¶çš„ PATH å¯èƒ½æ²¡æœ‰å®ƒï¼‰ ----------
+rem ---------- 0. ÕÒ git ----------
 git --version >nul 2>&1
 if errorlevel 1 (
-  set GITDIR=
+  set "GITDIR="
   if exist "C:/Program Files/Git/cmd/git.exe" set "GITDIR=C:/Program Files\Git\cmd"
   if not defined GITDIR if exist "C:/Program Files (x86)/Git/cmd/git.exe" set "GITDIR=C:/Program Files (x86)\Git\cmd"
   if not defined GITDIR if exist "%LOCALAPPDATA%\Programs\Git\cmd\git.exe" set "GITDIR=%LOCALAPPDATA%\Programs\Git\cmd"
   if not defined GITDIR if exist "D:/workbuddy/resources/vendor/PortableGit/cmd/git.exe" set "GITDIR=D:/workbuddy/resources/vendor/PortableGit/cmd"
   if not defined GITDIR if exist "D:/workbuddy/resources/vendor/PortableGit/mingw64/bin/git.exe" set "GITDIR=D:/workbuddy/resources/vendor/PortableGit/mingw64/bin"
   if not defined GITDIR (
-    echo [FAIL] ç³»ç»Ÿé‡Œæ‰¾ä¸åˆ° git.exe
-    echo        è¯·å®‰è£… Git for Windowsï¼Œæˆ–æŠŠ git åŠ å…¥ PATH
+    echo [FAIL] ÕÒ²»µ½ git.exe
+    echo        Çë°²×° Git for Windows£¬»ò°Ñ git ¼Ó½ø PATH
     goto fail
   )
   set "PATH=!GITDIR!;!PATH!"
-  if exist "!GITDIR!\..\mingw64\bin\git.exe" set "PATH=!GITDIR!\..\mingw64\bin;!PATH!"
-  echo ä½¿ç”¨ gitï¼š!GITDIR!
+  echo Ê¹ÓÃ git£º!GITDIR!
 )
-git --version
 
-:: ---------- 1. ç¡®è®¤æ˜¯ä»“åº“ ----------
+rem ---------- 0b. ÕÒ python ----------
+set "PY="
+python -c "import sys" >nul 2>&1
+if not errorlevel 1 set "PY=python"
+if not defined PY if exist "D:/python38/python/python.exe" set "PY=D:/python38/python/python.exe"
+
+rem ---------- 1. È·ÈÏÊÇ²Ö¿â ----------
 git rev-parse --is-inside-work-tree >nul 2>&1
 if errorlevel 1 (
   echo.
-  echo [FAIL] å½“å‰ç›®å½•ä¸æ˜¯ git ä»“åº“ï¼š
+  echo [FAIL] µ±Ç°Ä¿Â¼²»ÊÇ git ²Ö¿â£º
   echo        %CD%
   goto fail
 )
-for /f %%i in ('git rev-parse --abbrev-ref HEAD') do set BRANCH=%%i
-for /f %%i in ('git config --get remote.origin.url') do set REMOTE_URL=%%i
+for /f %%i in ('git rev-parse --abbrev-ref HEAD') do set "BRANCH=%%i"
+for /f %%i in ('git config --get remote.origin.url') do set "REMOTE_URL=%%i"
 
-:: ---------- 2. çœ‹æœ‰æ²¡æœ‰è¦åŒæ­¥çš„ ----------
-set CHANGES=0
+rem ---------- 2. À­ÏßÉÏÒıÓÃ£¬Ê§°Ü²»ÖÂÃü ----------
+echo ¼ì²éÏßÉÏ×´Ì¬ ...
+git fetch origin %BRANCH% >nul 2>&1
+if errorlevel 1 echo   fetch Ê§°Ü£¬°´±¾µØ¼ÇÂ¼µÄÏßÉÏ×´Ì¬ÅĞ¶Ï
+
+set "CHANGES=0"
 for /f "delims=" %%i in ('git status --porcelain') do set /a CHANGES+=1
-set AHEAD=0
-for /f %%i in ('git rev-list --count origin/%BRANCH%..HEAD 2^>nul') do set AHEAD=%%i
-git rev-parse --verify origin/%BRANCH% >nul 2>&1
-if errorlevel 1 set AHEAD=999
+
+set "CONTENT_DIFF=0"
+git diff --quiet origin/%BRANCH% HEAD >nul 2>&1
+if errorlevel 1 set "CONTENT_DIFF=1"
 
 echo.
-echo ä»“åº“ï¼š!REMOTE_URL!
-echo åˆ†æ”¯ï¼š%BRANCH%   å¾…æäº¤ï¼š%CHANGES% ä¸ª   æœªæ¨é€æäº¤ï¼š%AHEAD% ä¸ª
+echo ²Ö¿â£º!REMOTE_URL!
+echo ·ÖÖ§£º%BRANCH%
+if "%CHANGES%"=="0" (echo Î´Ìá½»¸Ä¶¯£ºÎŞ) else (echo Î´Ìá½»¸Ä¶¯£º%CHANGES% ¸ö)
+if "%CONTENT_DIFF%"=="0" (echo ÓëÏßÉÏÄÚÈİ£ºÒ»ÖÂ) else (echo ÓëÏßÉÏÄÚÈİ£ºÓĞ²îÒì)
 echo.
 
-if "%CHANGES%"=="0" if "%AHEAD%"=="0" (
-  echo [OK] æ²¡æœ‰è¦åŒæ­¥çš„å†…å®¹ï¼Œæœ¬åœ°ä¸çº¿ä¸Šä¸€è‡´ã€‚
+if "%CHANGES%"=="0" if "%CONTENT_DIFF%"=="0" (
+  echo [OK] ÏßÉÏÒÑÊÇ×îĞÂ£¬ÎŞĞèÍ¬²½¡£
   goto done
 )
 
-if not "%CHANGES%"=="0" (
-  echo å¾…æäº¤çš„æ–‡ä»¶ï¼š
-  git status --short
-  echo.
-)
-if not "%AHEAD%"=="0" (
-  echo å°šæœªæ¨é€çš„æäº¤ï¼š
-  git log --oneline -5 origin/%BRANCH%..HEAD
-  echo.
-)
-
-if "%1"=="--check" (
-  echo [CHECK] åªæ£€æŸ¥ä¸æ¨é€ã€‚å»æ‰ --check å†è¿è¡Œå³å¯åŒæ­¥ã€‚
-  exit /b 0
-)
-
-:: ---------- 3. æäº¤ ----------
-if not "%CHANGES%"=="0" (
-  set MSG=%*
-  if "!MSG!"=="" (
-    set D=
-    set T=
-    for /f "tokens=1-3 delims=/. " %%a in ("%DATE:/=.%") do set D=%%a%%b%%c
-    for /f "tokens=1-3 delims=:. " %%a in ("%TIME%") do set T=%%a%%b%%c
-    set T=!T: =!
-    set MSG=åŒæ­¥ !D!_!T!
+if not "%CONTENT_DIFF%"=="0" (
+  echo ÓëÏßÉÏ²»Í¬µÄÎÄ¼ş£º
+  if defined PY (
+    "%PY%" "%API_PUSH%" "%CD%" --list diff
+  ) else (
+    git --no-pager diff --name-status origin/%BRANCH% HEAD
   )
-  echo å³å°†æŠŠä»¥ä¸Šæ”¹åŠ¨æäº¤å¹¶åŒæ­¥åˆ°çº¿ä¸Šã€‚
-  echo æŒ‰ä»»æ„é”®ç»§ç»­ï¼Œè¦å–æ¶ˆè¯·æŒ‰ Ctrl+C ...
+  echo.
+)
+if not "%CHANGES%"=="0" (
+  echo ´ıÌá½»µÄÎÄ¼ş£º
+  if defined PY (
+    "%PY%" "%API_PUSH%" "%CD%" --list status
+  ) else (
+    git status --short
+  )
+  echo.
+)
+
+if "%~1"=="--check" (
+  echo [CHECK] Ö»¼ì²é²»ÍÆËÍ¡£È¥µô --check ÔÙÔËĞĞ¼´¿ÉÍ¬²½¡£
+  goto done
+)
+
+rem ---------- 3. Ìá½» ----------
+if not "%CHANGES%"=="0" (
+  set "MSG=%~1"
+  if "!MSG!"=="" set "MSG=Ò»¼üÍ¬²½"
+  echo °´ÈÎÒâ¼üÌá½»²¢Í¬²½µ½ÏßÉÏ£¬ÒªÈ¡ÏûÇëÖ±½Ó¹Ø´°¿Ú ...
   pause >nul
   git add -A
   git commit -q -m "!MSG!"
   if errorlevel 1 (
-    echo [FAIL] æäº¤å¤±è´¥ï¼Œè¯·æŸ¥çœ‹ä¸Šé¢çš„ git è¾“å‡ºã€‚
+    echo [FAIL] Ìá½»Ê§°Ü£¬Çë¿´ÉÏÃæµÄ git Êä³ö¡£
     goto fail
   )
-  echo [OK] å·²æäº¤ï¼š!MSG!
+  echo [OK] ÒÑÌá½»£º!MSG!
   echo.
 )
 
-:: ---------- 4. æ¨é€ï¼ˆå…ˆç›´è¿ï¼Œå¤±è´¥èµ° APIï¼‰ ----------
-echo æ¨é€åˆ° GitHub ...
-git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=20 push origin %BRANCH%
-if errorlevel 1 (
+rem ---------- 4. ÍÆËÍ ----------
+set "FF=0"
+git merge-base --is-ancestor origin/%BRANCH% HEAD >nul 2>&1
+if not errorlevel 1 set "FF=1"
+
+set "PUSHED=0"
+if "%FF%"=="1" (
+  echo ÍÆËÍµ½ GitHub ...
+  git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=20 push origin %BRANCH%
+  if not errorlevel 1 set "PUSHED=1"
+) else (
+  echo ±¾µØÓëÏßÉÏÀúÊ·ÒÑ·Ö²æ£¬Ìø¹ı git push¡£
+)
+
+if "%PUSHED%"=="0" (
   echo.
-  echo ç›´è¿æ¨é€å¤±è´¥ï¼ˆä»£ç† 502 å¾ˆå¸¸è§ï¼‰ï¼Œæ”¹ç”¨ GitHub API æ¨é€ ...
+  echo ¸ÄÓÃ GitHub API ÍÆËÍ ...
+  if not defined PY (
+    echo [FAIL] ÕÒ²»µ½ python£¬ÎŞ·¨×ß API ÍÆËÍ¡£
+    goto fail
+  )
   if not exist "%API_PUSH%" (
-    echo [FAIL] æ‰¾ä¸åˆ°æ¨é€è„šæœ¬ï¼š
+    echo [FAIL] ÕÒ²»µ½ÍÆËÍ½Å±¾£º
     echo        %API_PUSH%
     goto fail
   )
-  python "%API_PUSH%" "%CD%"
+  "%PY%" "%API_PUSH%" "%CD%" --align
   if errorlevel 1 (
-    echo [FAIL] API æ¨é€ä¹Ÿå¤±è´¥äº†ï¼Œæ£€æŸ¥ç½‘ç»œä¸ GitHub ç™»å½•çŠ¶æ€ã€‚
+    echo [FAIL] API ÍÆËÍÊ§°Ü£¬¼ì²éÍøÂçÓë GitHub µÇÂ¼×´Ì¬¡£
     goto fail
   )
 )
 
-:: ---------- 5. æ ¸å¯¹ ----------
-git fetch origin %BRANCH% >nul 2>&1
-set L=
-set R=
-for /f %%i in ('git rev-parse HEAD') do set L=%%i
-for /f %%i in ('git rev-parse origin/%BRANCH% 2^>nul') do set R=%%i
-
+rem ---------- 5. ºË¶ÔÄÚÈİ ----------
 echo.
-if /i "!L!"=="!R!" (
-  echo [OK] åŒæ­¥å®Œæˆã€‚æœ¬åœ° = çº¿ä¸Š = !L:~0,8!
-  echo.
-  echo GitHub Pages çº¦ 60-90 ç§’åç”Ÿæ•ˆï¼Œæµè§ˆå™¨è¯·æŒ‰ Ctrl+Shift+R å¼ºåˆ·ã€‚
-) else (
-  echo [WARN] çº¿ä¸Š !R:~0,8!  ä¸æœ¬åœ° !L:~0,8! ä¸ä¸€è‡´ï¼Œè¯·é‡æ–°è¿è¡Œä¸€æ¬¡ã€‚
+echo ºË¶ÔÏßÉÏÄÚÈİ ...
+git fetch origin %BRANCH% >nul 2>&1
+git diff --quiet origin/%BRANCH% HEAD >nul 2>&1
+if errorlevel 1 (
+  echo [WARN] ÏßÉÏÄÚÈİÓë±¾µØÈÔÓĞ²îÒì£¬ÇëÔÙÔËĞĞÒ»´Î¡£
+  goto fail
 )
+
+echo [OK] Í¬²½Íê³É£¬ÏßÉÏÄÚÈİÓë±¾µØÒ»ÖÂ¡£
+echo.
+echo GitHub Pages Ô¼ 60-90 ÃëºóÉúĞ§£¬ä¯ÀÀÆ÷Çë°´ Ctrl+Shift+R Ç¿Ë¢¡£
 goto done
 
 :fail
