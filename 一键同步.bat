@@ -149,6 +149,12 @@ rem ---------- 5. 核对内容 ----------
 echo.
 echo 核对线上内容 ...
 git fetch origin %BRANCH% >nul 2>&1
+if errorlevel 1 (
+  echo [OK] 推送已完成。网络受限，这次没能拉回远端做复核。
+  echo.
+  echo GitHub Pages 约 60-90 秒后生效，浏览器请按 Ctrl+Shift+R 强刷。
+  goto done
+)
 git diff --quiet origin/%BRANCH% HEAD >nul 2>&1
 if errorlevel 1 (
   echo [WARN] 线上内容与本地仍有差异，请再运行一次。
