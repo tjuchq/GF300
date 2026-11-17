@@ -3,9 +3,9 @@
   "schemaVersion": 1,
   "title": "三百首·词宗",
   "source": "飞书多维表格「三百首」+「解析」",
-  "generatedAt": "2026-11-15 12:35:12",
+  "generatedAt": "2026-11-17 17:09:47",
   "songsCount": 378,
-  "annotationsCount": 278,
+  "annotationsCount": 401,
   "eras": [
    {
     "label": "创世",
@@ -149,9 +149,21 @@
      "url": "https://www.bilibili.com/video/BV1Aq1kYmEiH",
      "date": "2024-10-07",
      "images": 0
+    },
+    {
+     "id": "reczz28aeL7ARbrP",
+     "song": "为龙",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2021-10-02",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -216,9 +228,21 @@
      "url": "https://www.bilibili.com/video/BV1AEt8enEVQ",
      "date": "2024-09-17",
      "images": 0
+    },
+    {
+     "id": "reczz28aeh1Btizx",
+     "song": "再逢明月照九州",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2021-12-25",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -322,9 +346,22 @@
     "网易云"
    ],
    "era": 0,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aaRsTzQTP",
+     "song": "如花",
+     "by": [
+      "泠音古风乐社"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2018-02-14",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -534,9 +571,22 @@
     "网易云"
    ],
    "era": 0,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aeB00MGrx",
+     "song": "不见长安",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2021-03-13",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -597,9 +647,21 @@
      "url": "https://www.bilibili.com/video/BV1xA4m1F7Xe",
      "date": "2024-04-06",
      "images": 0
+    },
+    {
+     "id": "reczz28aZIsBM8Qc",
+     "song": "伶仃谣",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-04-11",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -648,9 +710,22 @@
     "网易云"
    ],
    "era": 0,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aZFPljr34",
+     "song": "命悬一线",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-02-20",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -716,9 +791,21 @@
      "url": "https://www.bilibili.com/video/BV1U5PMegEeF",
      "date": "2025-02-22",
      "images": 0
+    },
+    {
+     "id": "reczz28aZ6jRtNV9",
+     "song": "哪吒",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2019-09-28",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -900,9 +987,21 @@
      "url": "https://www.bilibili.com/video/BV1uS411N7k3",
      "date": "2024-06-09",
      "images": 0
+    },
+    {
+     "id": "reczz28aZ2l0IoJj",
+     "song": "第三十八年夏至",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2019-06-21",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -1135,9 +1234,22 @@
     "网易云"
    ],
    "era": 0,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28afv2883xn",
+     "song": "天命风流",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2024-10-07",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -1195,9 +1307,22 @@
     "网易云"
    ],
    "era": 0,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aYmTjftOa",
+     "song": "日暮归途",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2019-03-16",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -1263,9 +1388,33 @@
      "url": "https://www.bilibili.com/video/BV1Am421N79j",
      "date": "2024-05-25",
      "images": 0
+    },
+    {
+     "id": "reczz28aaGWsHK4h",
+     "song": "琴师",
+     "by": [
+      "泠音古风乐社"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2017-11-22",
+     "images": 0
+    },
+    {
+     "id": "reczz28aeB00KZKP",
+     "song": "琴师",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2021-07-10",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 3,
    "hasNote": true,
    "extra": {}
   },
@@ -1366,9 +1515,22 @@
     "网易云"
    ],
    "era": 0,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28adz1aZKsT",
+     "song": "铃儿铛铛",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-11-21",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -1608,9 +1770,21 @@
      "url": "https://www.bilibili.com/video/BV1j4421U7Hh",
      "date": "2024-07-06",
      "images": 0
+    },
+    {
+     "id": "reczz28aYtlJfuTS",
+     "song": "故梦",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2019-04-18",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -1877,9 +2051,22 @@
     "网易云"
    ],
    "era": 0,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aaMbv3jAL",
+     "song": "谓我",
+     "by": [
+      "泠音古风乐社"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2017-12-20",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -2417,9 +2604,22 @@
     "网易云"
    ],
    "era": 1,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aeB00Lf9Z",
+     "song": "寸心笑傲",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2021-03-26",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -2594,9 +2794,22 @@
     "网易云"
    ],
    "era": 1,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aaf7amtrF",
+     "song": "昔言",
+     "by": [
+      "泠音古风乐社"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2019-03-28",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -2854,9 +3067,21 @@
      "url": "https://www.bilibili.com/video/BV1KLqUYmEKb",
      "date": "2024-12-11",
      "images": 0
+    },
+    {
+     "id": "reczz28afDH6O0Zk",
+     "song": "棠梨煎雪",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2022-05-14",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -3039,9 +3264,21 @@
      "url": "https://www.bilibili.com/video/BV1EmFHenEU6",
      "date": "2025-01-28",
      "images": 0
+    },
+    {
+     "id": "reczz28af0pdXLSN",
+     "song": "泸沽寻梦",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2022-01-08",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -3174,9 +3411,21 @@
      "url": "https://www.bilibili.com/video/BV1FK3w6TE9T",
      "date": "2026-07-27",
      "images": 0
+    },
+    {
+     "id": "reczz28aYzTLKPM0",
+     "song": "石楠小札",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2019-06-05",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -4217,9 +4466,21 @@
      "url": "https://www.bilibili.com/video/BV1sn4y1X7bP",
      "date": "2024-06-30",
      "images": 0
+    },
+    {
+     "id": "reczz28adtixFyXe",
+     "song": "松烟入墨",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-09-23",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -4567,9 +4828,22 @@
     "QQ音乐"
    ],
    "era": 1,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28ae2FIABTI",
+     "song": "烟笼长安",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-12-26",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -5777,9 +6051,21 @@
      "url": "",
      "date": "2018-04-15",
      "images": 0
+    },
+    {
+     "id": "reczz28aZ8k0y6ak",
+     "song": "永定四十年",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2019-12-22",
+     "images": 0
     }
    ],
-   "noteCount": 2,
+   "noteCount": 3,
    "hasNote": true,
    "extra": {}
   },
@@ -5921,9 +6207,33 @@
      "url": "",
      "date": "2024-11-11",
      "images": 0
+    },
+    {
+     "id": "reczz28aYr5h3RMz",
+     "song": "牵丝戏",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2019-03-26",
+     "images": 0
+    },
+    {
+     "id": "reczz28aaCh00txN",
+     "song": "牵丝戏",
+     "by": [
+      "泠音古风乐社"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2017-11-15",
+     "images": 0
     }
    ],
-   "noteCount": 2,
+   "noteCount": 4,
    "hasNote": true,
    "extra": {}
   },
@@ -6093,9 +6403,22 @@
     "网易云"
    ],
    "era": 1,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aaceAFQTN",
+     "song": "红梅白雪知",
+     "by": [
+      "泠音古风乐社"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2018-11-22",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -7007,9 +7330,22 @@
     "网易云"
    ],
    "era": 2,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aecqpXBpz",
+     "song": "我若是游子",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2021-10-30",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -7473,9 +7809,34 @@
     "网易云"
    ],
    "era": 2,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aYgGFuMc3",
+     "song": "艳唐",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2018-03-23",
+     "images": 0
+    },
+    {
+     "id": "reczz28aZM059Lnr",
+     "song": "艳唐",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-05-31",
+     "images": 0
+    }
+   ],
+   "noteCount": 2,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -7737,9 +8098,21 @@
      "url": "https://www.bilibili.com/video/BV18vc3ekEjw",
      "date": "2025-01-12",
      "images": 0
+    },
+    {
+     "id": "reczz28aZMcycudm",
+     "song": "不谓侠",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-06-14",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -8391,9 +8764,21 @@
      "url": "https://www.bilibili.com/video/BV1WKGv6uEW6",
      "date": "2026-05-23",
      "images": 0
+    },
+    {
+     "id": "reczz28af46HRCpF",
+     "song": "故事外的人",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2022-02-05",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -8442,9 +8827,22 @@
     "网易云"
    ],
    "era": 2,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28af5eQy7bT",
+     "song": "春日迟",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2022-03-12",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -8520,9 +8918,21 @@
      "url": "https://www.bilibili.com/video/BV18C4y127MW",
      "date": "2023-11-26",
      "images": 0
+    },
+    {
+     "id": "reczz28aaiE2C8mt",
+     "song": "春笺",
+     "by": [
+      "泠音古风乐社"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2019-04-11",
+     "images": 0
     }
    ],
-   "noteCount": 2,
+   "noteCount": 3,
    "hasNote": true,
    "extra": {}
   },
@@ -8616,9 +9026,21 @@
      "url": "",
      "date": "2024-12-11",
      "images": 0
+    },
+    {
+     "id": "reczz28aZ1w0a8eA",
+     "song": "是风动",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2019-06-12",
+     "images": 0
     }
    ],
-   "noteCount": 3,
+   "noteCount": 4,
    "hasNote": true,
    "extra": {}
   },
@@ -9878,9 +10300,21 @@
      "url": "https://www.bilibili.com/video/BV1nW41157sN",
      "date": "2018-04-20",
      "images": 0
+    },
+    {
+     "id": "reczz28aYOZu9Rt0",
+     "song": "千秋令",
+     "by": [
+      "秋水之汜"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2023-04-07",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -10251,9 +10685,21 @@
      "url": "https://www.bilibili.com/video/BV1Mhx7zjEvM",
      "date": "2025-10-06",
      "images": 0
+    },
+    {
+     "id": "reczz28aeL7AU0DL",
+     "song": "明月如霜",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2021-09-21",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -10469,9 +10915,21 @@
      "url": "https://www.bilibili.com/video/BV1QaPXeiETM",
      "date": "2025-02-03",
      "images": 0
+    },
+    {
+     "id": "reczz28aeL7AR7tk",
+     "song": "流光记",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2021-08-14",
+     "images": 0
     }
    ],
-   "noteCount": 2,
+   "noteCount": 3,
    "hasNote": true,
    "extra": {}
   },
@@ -10917,9 +11375,21 @@
      "url": "https://www.bilibili.com/video/BV1hE421P7Ej",
      "date": "2024-07-06",
      "images": 0
+    },
+    {
+     "id": "reczz28ae2FI9Zax",
+     "song": "赤伶",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2021-01-03",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -11264,9 +11734,21 @@
      "url": "",
      "date": "2025-09-06",
      "images": 0
+    },
+    {
+     "id": "reczz28adz9q5VW0",
+     "song": "人间不值得",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-11-29",
+     "images": 0
     }
    ],
-   "noteCount": 2,
+   "noteCount": 3,
    "hasNote": true,
    "extra": {}
   },
@@ -11858,9 +12340,33 @@
      "url": "https://www.bilibili.com/video/BV1NK411H7bd",
      "date": "2020-07-05",
      "images": 0
+    },
+    {
+     "id": "reczz28aYCLGGybm",
+     "song": "大氿歌",
+     "by": [
+      "怜青"
+     ],
+     "platform": "bilibili",
+     "addr": "BV1p4sH6hEPU",
+     "url": "https://www.bilibili.com/video/BV1p4sH6hEPU",
+     "date": "2026-11-15",
+     "images": 0
+    },
+    {
+     "id": "reczz28adt8dWkrS",
+     "song": "大氿歌",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-09-13",
+     "images": 0
     }
    ],
-   "noteCount": 2,
+   "noteCount": 4,
    "hasNote": true,
    "extra": {}
   },
@@ -11911,9 +12417,22 @@
     "QQ音乐"
    ],
    "era": 3,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28ag2ThkngK",
+     "song": "天命在我",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2026-07-05",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -12531,9 +13050,22 @@
     "QQ音乐"
    ],
    "era": 3,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aduN4k84s",
+     "song": "沅水谣",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-10-17",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -13943,9 +14475,21 @@
      "url": "https://www.bilibili.com/video/BV15EUTBPEsB",
      "date": "2025-11-23",
      "images": 0
+    },
+    {
+     "id": "reczz28afDH6QJMZ",
+     "song": "万古生香",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2022-04-23",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -14342,9 +14886,22 @@
     "QQ音乐"
    ],
    "era": 3,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aZLHy3jMu",
+     "song": "六耳",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-05-17",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -14776,9 +15333,22 @@
     "QQ音乐"
    ],
    "era": 3,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28ae2FI9Yv9",
+     "song": "无以为乡",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-12-20",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -15099,9 +15669,22 @@
     "QQ音乐"
    ],
    "era": 3,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28ab68aKCmf",
+     "song": "第九戒",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-07-19",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -15157,9 +15740,22 @@
     "QQ音乐"
    ],
    "era": 3,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28aZDoxB1nF",
+     "song": "致陌生的你",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2020-02-04",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -16061,9 +16657,22 @@
     "网易云"
    ],
    "era": 4,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28af1skjBV8",
+     "song": "最佳配角",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2022-01-15",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -16243,9 +16852,21 @@
      "url": "https://www.bilibili.com/video/BV1M682zqEaq",
      "date": "2025-07-31",
      "images": 0
+    },
+    {
+     "id": "reczz28aeL7ASTdC",
+     "song": "红拂夜奔",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2021-09-04",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -17717,9 +18338,21 @@
      "url": "https://www.bilibili.com/video/BV1uix1eTEdm",
      "date": "2024-09-30",
      "images": 0
+    },
+    {
+     "id": "reczz28afsFyX5St",
+     "song": "终不还",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2023-06-17",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -17861,9 +18494,21 @@
      "url": "",
      "date": "2026-08-20",
      "images": 0
+    },
+    {
+     "id": "reczz28afYIJibyK",
+     "song": "见夏如晤",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2022-07-23",
+     "images": 0
     }
    ],
-   "noteCount": 2,
+   "noteCount": 3,
    "hasNote": true,
    "extra": {}
   },
@@ -18493,9 +19138,22 @@
     "网易云"
    ],
    "era": 4,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28afxzRQGIq",
+     "song": "再见月光",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2025-10-31",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -21938,9 +22596,21 @@
      "url": "https://www.bilibili.com/video/BV1suF7zgE5k",
      "date": "2026-02-07",
      "images": 0
+    },
+    {
+     "id": "reczz28afzNrScRj",
+     "song": "一半勾留",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2025-12-28",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
@@ -22142,7 +22812,7 @@
       "萧暮雨"
      ],
      "platform": "微信",
-     "addr": "",
+     "addr": "文件",
      "url": "",
      "date": "2026-10-27",
      "images": 0
@@ -22435,9 +23105,21 @@
      "url": "https://www.bilibili.com/video/BV15xg36HEaA",
      "date": "2026-08-15",
      "images": 0
+    },
+    {
+     "id": "reczz28afzSLLqcg",
+     "song": "清浪滩上",
+     "by": [
+      "日晚(春夏)"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2026-01-18",
+     "images": 0
     }
    ],
-   "noteCount": 1,
+   "noteCount": 2,
    "hasNote": true,
    "extra": {}
   },
