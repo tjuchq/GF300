@@ -6,7 +6,7 @@ set "PAGER=cat"
 title 同步到 GitHub - GF300
 cd /d "%~dp0"
 
-set "API_PUSH=D:/workbuddyspace/qita/工具/01-三百首游戏/push_api.py"
+set "API_PUSH=D:/workspace/qita/工具/02-三百首/游戏/push_api.py"
 
 echo ==========================================
 echo    同步到 GitHub   tjuchq/GF300
