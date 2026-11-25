@@ -3,8 +3,8 @@
   "schemaVersion": 1,
   "title": "三百首·词宗",
   "source": "飞书多维表格「三百首」+「解析」",
-  "generatedAt": "2026-11-17 17:09:47",
-  "songsCount": 378,
+  "generatedAt": "2026-11-25 15:54:04",
+  "songsCount": 379,
   "annotationsCount": 401,
   "eras": [
    {
@@ -13066,6 +13066,71 @@
    ],
    "noteCount": 1,
    "hasNote": true,
+   "extra": {}
+  },
+  {
+   "id": "reczz28cM6URCMBe",
+   "name": "清绝",
+   "year": 2019,
+   "date": "2019-06-19",
+   "type": "架空-剑三",
+   "typeGroup": "架空",
+   "subjects": [],
+   "lyricist": [
+    "乘物游心"
+   ],
+   "composer": [
+    "柏鹿"
+   ],
+   "arranger": [
+    "Zeff",
+    "RH"
+   ],
+   "singer": [
+    "云之泣",
+    "鲁璐"
+   ],
+   "tuner": [],
+   "staff": [
+    "柏鹿",
+    "乘物游心",
+    "鲁璐",
+    "云之泣",
+    "RH",
+    "Zeff"
+   ],
+   "duos": [
+    "柏鹿乘物游心",
+    "柏鹿云之泣",
+    "乘物游心云之泣",
+    "柏鹿RH",
+    "乘物游心RH",
+    "云之泣RH",
+    "柏鹿Zeff",
+    "乘物游心Zeff",
+    "云之泣Zeff",
+    "RHZeff"
+   ],
+   "voicebank": [],
+   "isVirtual": false,
+   "isSpecial": false,
+   "batch": "6",
+   "dateSource": "网易云",
+   "platforms": {
+    "5sing": "无",
+    "qg": "有",
+    "qq": "有",
+    "wyy": "有"
+   },
+   "available": [
+    "酷狗",
+    "QQ音乐",
+    "网易云"
+   ],
+   "era": 3,
+   "notes": [],
+   "noteCount": 0,
+   "hasNote": false,
    "extra": {}
   },
   {
