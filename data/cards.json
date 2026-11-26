@@ -3,9 +3,9 @@
   "schemaVersion": 1,
   "title": "三百首·词宗",
   "source": "飞书多维表格「三百首」+「解析」",
-  "generatedAt": "2026-11-25 15:54:04",
+  "generatedAt": "2026-11-26 23:52:14",
   "songsCount": 379,
-  "annotationsCount": 401,
+  "annotationsCount": 403,
   "eras": [
    {
     "label": "创世",
@@ -23845,9 +23845,22 @@
     "网易云"
    ],
    "era": 5,
-   "notes": [],
-   "noteCount": 0,
-   "hasNote": false,
+   "notes": [
+    {
+     "id": "reczz28eCb5DnTdk",
+     "song": "嘉定二年冬",
+     "by": [
+      "无宁外传"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2026-11-07",
+     "images": 0
+    }
+   ],
+   "noteCount": 1,
+   "hasNote": true,
    "extra": {}
   },
   {
@@ -24212,9 +24225,21 @@
      "url": "https://www.bilibili.com/video/BV1PRNN6zEJw",
      "date": "2026-07-12",
      "images": 0
+    },
+    {
+     "id": "reczz28eCil1Bvsb",
+     "song": "草木青时",
+     "by": [
+      "白墨书屋"
+     ],
+     "platform": "微信",
+     "addr": "微信公众号",
+     "url": "",
+     "date": "2026-04-22",
+     "images": 0
     }
    ],
-   "noteCount": 2,
+   "noteCount": 3,
    "hasNote": true,
    "extra": {}
   },

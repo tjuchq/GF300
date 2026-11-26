@@ -106,7 +106,7 @@ const B = {
   startBonus: 2, handLimit: 0, tollLapCap: 2, maxTurns: 400,
   hardWinNow: true, hardBlock: true, hardBehind: true,
   easyNoiseByN: { 2: [0, 0], 3: [0, 0, 0], 4: [0, 0, 0, 0] },
-  hardNoiseByN: { 2: [0.12, 0], 3: [0.18, 0, 0], 4: [0.10, 0.12, 0.08, 0] }
+  hardNoiseByN: { 2: [0.16, 0], 3: [0.22, 0, 0], 4: [0.10, 0.12, 0.08, 0] }   /* 2026-11-26 复跑后重调，须与 js/board.js 同步 */
 };
 const CHANCE = [
   { ink: 3 }, { ink: 4 }, { fame: 2 }, { fame: 3 }, { ink: 2, fame: 1 },
